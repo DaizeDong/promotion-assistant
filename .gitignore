@@ -1,0 +1,19 @@
+# This PUBLIC skill repo must never contain product copy, credentials, or runtime metrics.
+# (Those live only in the private per-product config repo, Mode B.)
+__pycache__/
+*.pyc
+.python-version
+.venv/
+venv/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.bak
+*~
+# defensive: no secrets/metrics should ever appear here, but ignore them if they do
+secrets/
+*.env
+metrics/
+*.jsonl
+.claude.json

@@ -17,3 +17,6 @@ secrets/
 metrics/
 *.jsonl
 .claude.json
+
+# self-evolve run sandbox (worktrees/runs/events) — never commit
+.sie/

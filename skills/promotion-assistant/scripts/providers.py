@@ -14,12 +14,24 @@ OAuth posting, Mastodon REST, X API). A deferred-gap is an EXPLICIT gap, never a
 """
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
 # Local infra contracts (reused, not reimplemented).
 SEND_GMAIL_PS1 = Path.home() / ".claude" / "scripts" / "send-gmail.ps1"
 DISCORD_RELAY = Path.home() / ".claude" / "discord_relay" / "send.py"
+
+# A single, well-formed email recipient (no whitespace/quotes/angle-brackets, exactly one @).
+_EMAIL_RE = re.compile(r"^[^\s@\"'<>]+@[^\s@\"'<>]+\.[^\s@\"'<>]+$")
+
+
+def _arg_binding_safe(*vals) -> bool:
+    """Reject any positional value that would be mis-bound as a PARAMETER NAME by
+    `powershell -File ... -To <val>` (PowerShell treats a leading '-' token as a param name,
+    not a value). Not shell injection (no shell=True) but a real arg-binding vector on the
+    live email path. Live-only + operator-controlled config, so this is defense-in-depth."""
+    return not any(isinstance(v, str) and v.startswith("-") for v in vals)
 
 
 class Provider:
@@ -57,10 +69,18 @@ class EmailProvider(Provider):
             return self._not_live("publish")
         if not SEND_GMAIL_PS1.is_file():
             return {"status": "error", "reason": "send-gmail.ps1 not found"}
+        # ---- arg-binding hardening (live-only): validate BEFORE spawning the subprocess ----
+        recipient = payload.get("recipient", "")
+        subject = payload.get("subject", "")
+        body = payload.get("body", "")
+        if not _EMAIL_RE.match(recipient or ""):
+            return {"status": "error", "reason": "invalid recipient (must be a single email address)"}
+        if not _arg_binding_safe(recipient, subject, body):
+            return {"status": "error",
+                    "reason": "argument starts with '-' (PowerShell arg-binding guard); refused"}
         # NOTE: real invocation intentionally not auto-run in build; wired for live-authorized use.
         cmd = ["powershell", "-NoProfile", "-File", str(SEND_GMAIL_PS1),
-               "-To", payload["recipient"], "-Subject", payload.get("subject", ""),
-               "-Body", payload.get("body", "")]
+               "-To", recipient, "-Subject", subject, "-Body", body]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                                errors="replace", timeout=60)

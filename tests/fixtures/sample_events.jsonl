@@ -1,0 +1,2 @@
+{"schema": "promo.event.v1", "channel": "reddit-rp", "event_type": "simulated", "arm_id": "armA", "propensity_p": 0.5, "policy_version": "v1"}
+{"schema": "promo.event.v1", "channel": "reddit-rp", "event_type": "click", "subject_key": "u1"}

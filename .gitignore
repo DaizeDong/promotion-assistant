@@ -15,7 +15,11 @@ desktop.ini
 secrets/
 *.env
 metrics/
+# defensive default: ignore stray runtime .jsonl, but allow committed test fixtures and
+# reference shards (narrowed from a blanket *.jsonl that silently swallowed legit fixtures).
 *.jsonl
+!tests/**/*.jsonl
+!**/reference/**/*.jsonl
 .claude.json
 
 # self-evolve run sandbox (worktrees/runs/events) — never commit

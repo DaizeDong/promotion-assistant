@@ -93,6 +93,20 @@ class Config:
                 return c
         return None
 
+    def live_authorize_token(self, slug: str) -> str | None:
+        """Optional per-channel EXPECTED value for the PROMO_LIVE_AUTHORIZED_<CH> env token.
+
+        When a channel declares `live_authorize_token` in registry.json, dispatch's second
+        factor is strengthened from existence-only to a constant-time equality check (the env
+        value must EQUAL this configured secret). Returns None when unset -> existence-only
+        (any non-empty env value authorizes), which is the documented default.
+        """
+        ch = self.channel(slug) or {}
+        tok = ch.get("live_authorize_token")
+        if tok in (None, ""):
+            return None
+        return str(tok)
+
     def policy(self, slug: str) -> dict:
         doc = _load_doc(self.root / "channels" / slug / "policy.json") or {}
         return doc

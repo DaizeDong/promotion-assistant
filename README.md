@@ -60,6 +60,27 @@ python scripts/cli.py run  --campaign <C> --once      # gated dispatch (DRY-RUN 
 python scripts/cli.py report --funnel                 # six-layer funnel
 ```
 
+## Config
+
+`promotion-assistant` is **config-bearing** — it reads all product copy, audiences, per-channel
+policy and credentials from a **separate, private** companion config repo. Full contract:
+[CONFIG.md](CONFIG.md) (schema reference: [reference/config-schema.md](skills/promotion-assistant/reference/config-schema.md)).
+
+- **Mount (discovery order):** `$PROMO_CONFIG_DIR` (primary) → `$PROMOTION_ASSISTANT_CONFIG` →
+  `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
+  `~/.config/promotion-assistant-config/`. First that exists wins; absent = fail-closed.
+- **First time:**
+  ```bash
+  cd skills/promotion-assistant
+  python scripts/init_config.py        # stamp a conformant skeleton (deterministic)
+  export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # or pass --out <dir> to init
+  python scripts/verify_config.py       # doctor: PASS/FAIL, names what is missing
+  ```
+- **Switch configs (hot-swap):** point the env var at another config dir — configs are
+  self-contained, no other change: `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`.
+- **Secrets:** Mode B — `secrets/*` is gitignored and never enters git; back up out-of-band.
+  Credentials bridge into the active config via the config repo's forked `scripts/apply.py`.
+
 ## How to invoke
 
 Trigger words: promote / promotion / marketing automation / outreach / bulk email / social posting /

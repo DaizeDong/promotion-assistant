@@ -3,8 +3,14 @@
 
 Every real send/post/DM in the whole system goes through dispatch(). It asserts BOTH:
   1. product.json.send_mode == "live", AND
-  2. environment token PROMO_LIVE_AUTHORIZED_<CHANNEL> matches the per-channel authorize token.
-If either is missing -> the action is SIMULATED: it still runs the full pipeline
+  2. environment token PROMO_LIVE_AUTHORIZED_<CHANNEL> is PRESENT (any non-empty value).
+     Second factor strength is config-driven: if the per-channel config declares an expected
+     `live_authorize_token`, the env value must additionally EQUAL it (constant-time compare);
+     when no expected token is configured, the second factor is existence-only (any non-empty
+     value authorizes). This is honest about the default — the existence-only fallback is
+     intentional (the env token alone is the operator's per-channel arming gesture), and a
+     configured secret upgrades it to a true match.
+If either factor fails -> the action is SIMULATED: it still runs the full pipeline
 (compliance gate -> throttle -> [would call provider] -> writes an event_type='simulated' row +
 a dry-run.jsonl record with the would-send content and estimated recipients), but performs ZERO
 network egress. This lets the metrics stream + bandit train with no real outreach.
@@ -14,6 +20,7 @@ Pipeline order (all dry-run too):  compliance.check  ->  throttle.allow  ->  pro
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
 from pathlib import Path
@@ -21,14 +28,22 @@ from pathlib import Path
 from . import compliance, events, providers
 
 
-def _authorized(channel: str, send_mode: str, *, env=None) -> tuple:
+def _authorized(channel: str, send_mode: str, *, env=None, expected=None) -> tuple:
+    """Two-factor live gate. Factor 1: send_mode=="live". Factor 2: env token present, and
+    (iff `expected` is configured) the env token must EQUAL it via constant-time compare.
+    Fail-closed: any failure returns (False, why) so dispatch falls back to SIMULATED."""
     env = env if env is not None else os.environ
     if send_mode != "live":
         return (False, "send_mode=%s (not live)" % send_mode)
     tok_env = "PROMO_LIVE_AUTHORIZED_%s" % channel.upper().replace("-", "_")
-    if not env.get(tok_env):
+    val = env.get(tok_env)
+    if not val:
         return (False, "missing %s authorize token" % tok_env)
-    return (True, "authorized")
+    if expected:
+        if not hmac.compare_digest(str(val), str(expected)):
+            return (False, "%s does not match configured live_authorize_token" % tok_env)
+        return (True, "authorized (token matched)")
+    return (True, "authorized (token present)")
 
 
 def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
@@ -80,7 +95,8 @@ def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
         return {"status": "throttled", "reason": why, "wait_seconds": wait}
 
     # ---- authorization (fail-closed) ----
-    is_live, auth_why = _authorized(channel, cfg.send_mode, env=env)
+    expected_tok = getattr(cfg, "live_authorize_token", lambda _c: None)(channel)
+    is_live, auth_why = _authorized(channel, cfg.send_mode, env=env, expected=expected_tok)
     prov = providers.get(platform)
 
     if is_live and prov.LIVE_TRANSPORT:

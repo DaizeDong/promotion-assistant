@@ -7,8 +7,11 @@ secrets/*.env values into the process beyond what apply.py needs — credentials
 bridged into the live MCP/active config by the config repo's own apply.py, not here.
 
 Discovery order (first hit wins):
-  1. $PROMO_CONFIG_DIR                       (explicit, recommended)
-  2. ~/.promotion-assistant-config/          (dotfile-in-home fallback)
+  1. $PROMO_CONFIG_DIR                        (explicit, recommended — primary)
+  2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
+  3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
+  4. ~/.promotion-assistant-config/          (dotfile-in-home fallback)
+  5. ~/.config/promotion-assistant-config/   (XDG-style fallback)
 """
 from __future__ import annotations
 
@@ -31,9 +34,13 @@ def find_config_dir(explicit: str | None = None) -> Path:
     cands = []
     if explicit:
         cands.append(Path(explicit))
-    if os.environ.get("PROMO_CONFIG_DIR"):
-        cands.append(Path(os.environ["PROMO_CONFIG_DIR"]))
+    # env vars: PROMO_CONFIG_DIR stays primary (the user-chosen canonical name); the
+    # config-spec canonical aliases are honored too so spec and code agree (additive).
+    for ev in ("PROMO_CONFIG_DIR", "PROMOTION_ASSISTANT_CONFIG", "PROMOTION_ASSISTANT_CONFIG_DIR"):
+        if os.environ.get(ev):
+            cands.append(Path(os.environ[ev]))
     cands.append(Path.home() / ".promotion-assistant-config")
+    cands.append(Path.home() / ".config" / "promotion-assistant-config")
     for c in cands:
         if c and c.is_dir():
             return c.resolve()

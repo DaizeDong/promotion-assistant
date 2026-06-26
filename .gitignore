@@ -11,10 +11,21 @@ desktop.ini
 *.log
 *.bak
 *~
-# defensive: no secrets/metrics should ever appear here, but ignore them if they do
-secrets/
+# defensive: no secrets/metrics should ever appear here, but ignore them if they do.
+# Secrets gate (config-spec E6) with allow-list exceptions for committable templates/placeholders.
+secrets/*
+!secrets/README.md
+!secrets/.gitkeep
 *.env
+!*.env.template
+!env.template
 metrics/
+claude.json
+*credentials*.json
+*.key
+*.pem
+!*.key.template
+!*.pem.template
 # defensive default: ignore stray runtime .jsonl, but allow committed test fixtures and
 # reference shards (narrowed from a blanket *.jsonl that silently swallowed legit fixtures).
 *.jsonl

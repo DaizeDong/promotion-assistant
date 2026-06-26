@@ -35,3 +35,8 @@ claude.json
 
 # self-evolve run sandbox (worktrees/runs/events) — never commit
 .sie/
+
+# build/iteration meta-notes — not skill content, keep local only
+PROGRESS.md
+.pytest_cache/
+scratchpad/

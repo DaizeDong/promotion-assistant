@@ -56,6 +56,26 @@ python scripts/cli.py run  --campaign <C> --once      # 受闸 dispatch(默认 D
 python scripts/cli.py report --funnel                 # 六层漏斗
 ```
 
+## 配置
+
+`promotion-assistant` 是**带 config 的 skill** —— 所有产品文案、受众、按渠道 policy 与凭证都放在一个
+**独立、私有**的伴随 config 仓。完整规范见 [CONFIG.md](CONFIG.md)(字段参考:[reference/config-schema.md](skills/promotion-assistant/reference/config-schema.md))。
+
+- **挂载(发现顺序):** `$PROMO_CONFIG_DIR`(主)→ `$PROMOTION_ASSISTANT_CONFIG` →
+  `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
+  `~/.config/promotion-assistant-config/`。命中第一个即用;都没有则 fail-closed。
+- **首次配置:**
+  ```bash
+  cd skills/promotion-assistant
+  python scripts/init_config.py        # 生成符合规范的 config 骨架(确定性)
+  export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # 或给 init 传 --out <dir>
+  python scripts/verify_config.py       # doctor:逐项 PASS/FAIL,明确报缺什么
+  ```
+- **切换 config(即插即用):** 把环境变量指向另一个 config 目录即可 —— config 自包含,无需任何别的改动:
+  `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`。
+- **密钥:** Mode B —— `secrets/*` 已 gitignore,永不入库;请用库外备份。凭证经 config 仓自带的
+  (从 market-intel-config fork 的)`scripts/apply.py` 桥接进活动配置。
+
 ## 如何触发
 
 触发词: 推广 / promotion / 营销自动化 / 外联 / 群发邮件 / 多平台发帖 / 增长 / 漏斗 / 多账号。(或直接跑 CLI)

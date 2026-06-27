@@ -1,8 +1,8 @@
 # Roadmap
 
-Current: **v0.1.0**
+Current: **v0.1.1**
 
-## v0.1.0 (current)
+## v0.1.1 (current)
 - Six-layer architecture: config (Mode B) · orchestration (schedule-reminder + relay) · channel
   providers · compliance/throttle (fail-closed dry-run exit) · metrics (funnel + attribution) ·
   bandit (discounted Thompson Sampling).

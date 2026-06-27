@@ -8,19 +8,35 @@ the existing relay (do NOT reimplement notification, do NOT mix with the Haptic 
 """
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 RELAY = Path.home() / ".claude" / "discord_relay" / "send.py"
 
 
+def _egress_cmd():
+    """Pluggable Agent Center egress: prefer schedule-reminder's unified relay (#promotion stream)
+    when the base is installed; fall back to the Big Brother relay (send.py) so this works
+    standalone. Caller appends the message as the final arg."""
+    rp = os.environ.get("SCHEDULE_RELAY_PY") or str(
+        Path.home() / ".claude/skills/schedule-reminder/scripts/relay.py")
+    if os.path.isfile(rp):
+        return [sys.executable, rp, "send", "--stream", "promotion", "--text"]
+    if RELAY.is_file():
+        return [sys.executable, str(RELAY)]
+    return None
+
+
 def alert(message: str, *, dry_run=False) -> dict:
-    if not RELAY.is_file():
+    cmd = _egress_cmd()
+    if not cmd:
         return {"status": "no-relay", "message": message}
     if dry_run:
         return {"status": "dry-run", "message": message}
     try:
-        r = subprocess.run(["python", str(RELAY), message], capture_output=True, text=True,
+        r = subprocess.run(cmd + [message], capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=30)
         return {"status": "sent" if r.returncode == 0 else "error", "rc": r.returncode}
     except Exception as e:  # pragma: no cover

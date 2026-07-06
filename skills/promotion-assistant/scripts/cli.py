@@ -150,7 +150,14 @@ def main(argv=None):
     srep = sub.add_parser("report"); srep.add_argument("--funnel", action="store_true"); srep.add_argument("--bandit", action="store_true"); srep.set_defaults(fn=cmd_report)
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
     args = p.parse_args(argv)
-    return args.fn(args)
+    try:
+        return args.fn(args)
+    except _config.ConfigError as e:
+        sys.stderr.write("promotion-assistant: no usable config (%s)\n" % e)
+        sys.stderr.write("  -> run `promotion-assistant init --config <dir>`, or set $PROMO_CONFIG_DIR "
+                         "to a product config repo (bootstrap: scripts/init_config.py; see "
+                         "runbooks/new-machine.md).\n")
+        return 2
 
 
 if __name__ == "__main__":

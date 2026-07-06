@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here (Keep a Changelog style).
 
+## [0.1.2] - 2026-07-06
+### Security
+- **Compliance-matcher evasion hardening.** Banned-claim/body matching now NFKC-normalizes, strips
+  zero-width/format chars, and folds common Cyrillic/Greek homoglyphs; suppression matching folds
+  `+tag` aliases + case/unicode; CAN-SPAM checks fire when a payload is *email-like* (recipient is an
+  email or channel says so), not only when `transport=="smtp"` — so a mislabeled transport can no
+  longer skip CAN-SPAM. An adversarial review had bypassed all four; guarded by
+  `tests/test_compliance_hardening.py` (7 cases). `check()` API unchanged.
+### Fixed
+- CLI: every subcommand now surfaces a friendly "no usable config" message instead of an uncaught
+  `ConfigError` traceback when `$PROMO_CONFIG_DIR` is unset.
+### Added
+- `CONTRIBUTING.md` (Skill Repo Spec completeness — was the sole missing required file).
+- ROADMAP now separates "built + tested, pending wire-in" (contextual bandit / OPE / deliverability /
+  segmentation / sequential-A-B / delayed-reward — implemented libraries not yet in the live `run`
+  loop) from externally-blocked "planned" (live OAuth providers), so the shelf-ware status is explicit.
+
 ## [0.1.1] - 2026-06-27
 ### Changed
 - **Discord egress unified through Agent Center relay**: pushes now prefer schedule-reminder's

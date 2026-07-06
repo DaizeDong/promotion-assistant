@@ -1,6 +1,6 @@
 {
   "name": "promotion-assistant",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Automate multi-channel product promotion (email/posts/forum/DM), track conversion funnel, self-tune via feedback.",
   "author": {
     "name": "DaizeDong"

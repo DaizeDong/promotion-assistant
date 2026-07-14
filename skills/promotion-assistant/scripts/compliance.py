@@ -77,7 +77,7 @@ def normalize_recipient(recip: str) -> str:
     """Canonical form of a recipient for suppression matching.
 
     Lowercase + NFKC + strip format chars; for email addresses drop the local-part `+tag`
-    alias (a@x.com and a+promo@x.com are the same mailbox for suppression purposes).
+    alias (a@example.com and a+promo@example.com are the same mailbox for suppression purposes).
     """
     r = _normalize_text(recip).replace(" ", "")
     if "@" in r:

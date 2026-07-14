@@ -108,9 +108,9 @@ def test_f2_dash_leading_subject_or_body_refused(monkeypatch):
     with tempfile.TemporaryDirectory() as t:
         spy = _wire_email(monkeypatch, t)
         prov = P.EmailProvider()
-        assert prov.publish({"recipient": "a@b.com", "subject": "-Foo", "body": "b"},
+        assert prov.publish({"recipient": "a@example.com", "subject": "-Foo", "body": "b"},
                             live=True)["status"] == "error"
-        assert prov.publish({"recipient": "a@b.com", "subject": "s", "body": "-rm"},
+        assert prov.publish({"recipient": "a@example.com", "subject": "s", "body": "-rm"},
                             live=True)["status"] == "error"
         assert spy.calls == []
 

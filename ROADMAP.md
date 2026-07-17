@@ -17,7 +17,7 @@ Current: **v0.1.2**
   bandit (discounted Thompson Sampling).
 - Dual-line engine: blast (email via send-gmail.ps1, multi-platform posting) + precision (forum/DM)
   with email + own-server Discord as live transports; Mastodon/Bluesky/Reddit/X/PH/HN as deferred-gaps.
-- Acceptance gate E1-E12 (`selftest.py`) — all passing, zero egress.
+- Acceptance gate E1-E12 (`selftest.py`), all passing, zero egress.
 
 ## Built + tested, pending wire-in
 These are implemented as stdlib libraries with their own acceptance tests today, but are NOT yet

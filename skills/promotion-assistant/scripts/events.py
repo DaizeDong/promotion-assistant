@@ -20,7 +20,7 @@ EVENT_TYPES = {
     # positive funnel
     "sent", "delivered", "open", "view", "like", "comment", "share", "reply",
     "click", "conversion",
-    # negative / risk (first-class — fed as strong negative reward)
+    # negative / risk (first-class, fed as strong negative reward)
     "bounce", "unsub", "complaint", "blocked", "ratelimited", "shadowban",
     # build-time
     "simulated",

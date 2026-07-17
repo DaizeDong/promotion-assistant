@@ -64,7 +64,7 @@ def main():
 
     check("config dir exists", os.path.isdir(cfg))
 
-    # product.json — required, drives the global send_mode gate.
+    # product.json, required, drives the global send_mode gate.
     prod = os.path.join(cfg, "product.json")
     prod_ok = os.path.isfile(prod)
     check("product.json present", prod_ok)
@@ -79,7 +79,7 @@ def main():
         except Exception as e:
             check("product.json valid JSON", False, str(e))
 
-    # registry.json — channels list; each channel needs a slug.
+    # registry.json, channels list; each channel needs a slug.
     reg = os.path.join(cfg, "registry.json")
     reg_ok = os.path.isfile(reg)
     check("registry.json present", reg_ok)
@@ -117,7 +117,7 @@ def main():
         txt = open(gi, "r", encoding="utf-8", errors="replace").read()
         check(".gitignore blocks secrets (secrets/* + *.env)", "secrets/" in txt and "*.env" in txt)
 
-    # apply.py forked? informational — cli handles its absence gracefully.
+    # apply.py forked? informational, cli handles its absence gracefully.
     check("scripts/apply.py forked from companion config kit",
           os.path.isfile(os.path.join(cfg, "scripts", "apply.py")),
           "fork it before `promotion-assistant apply` (see scripts/apply.README.md)", level=WARN)

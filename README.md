@@ -1,6 +1,6 @@
 # promotion-assistant
 
-Multi-channel product promotion that quantifies its own funnel and self-tunes — dry-run by default, compliance fail-closed.
+Multi-channel product promotion that quantifies its own funnel and self-tunes, dry-run by default, compliance fail-closed.
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange?style=flat)](https://docs.anthropic.com/en/docs/claude-code)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -11,13 +11,13 @@ Multi-channel product promotion that quantifies its own funnel and self-tunes �
 
 ---
 
-## ⭐ Read this first — the design philosophy
+## ⭐ Read this first, the design philosophy
 
 **Methodology is constant, signals adapt; compliance is engineering not goodwill; dry-run is the
 default, not an option.** The channel matrix, six-layer funnel, bandit and compliance gate are fixed
 method; every platform limit, audience and piece of copy lives in a per-product config repo. No
 outbound action ever leaves the machine unless the product is explicitly set live **and** that
-channel is individually authorized — the safe state is the one you fall into by doing nothing.
+channel is individually authorized, the safe state is the one you fall into by doing nothing.
 
 📜 **[Read the full design philosophy -> PHILOSOPHY.md](PHILOSOPHY.md)**
 
@@ -26,7 +26,7 @@ channel is individually authorized — the safe state is the one you fall into b
 ## What it is (and isn't)
 
 **Is:** a thin, product-agnostic orchestrator for promoting a *shipped* product across many channels
-with quantified feedback — blast (bulk email + multi-platform posting) and precision (forum replies +
+with quantified feedback, blast (bulk email + multi-platform posting) and precision (forum replies +
 DMs), daily multi-account upkeep, a six-layer conversion funnel, and a Thompson-Sampling bandit that
 self-tunes tactics. All product copy/audiences/credentials live in a **separate private config repo**.
 
@@ -62,7 +62,7 @@ python scripts/cli.py report --funnel                 # six-layer funnel
 
 ## Config
 
-`promotion-assistant` is **config-bearing** — it reads all product copy, audiences, per-channel
+`promotion-assistant` is **config-bearing**, it reads all product copy, audiences, per-channel
 policy and credentials from a **separate, private** companion config repo. Full contract:
 [CONFIG.md](CONFIG.md) (schema reference: [reference/config-schema.md](skills/promotion-assistant/reference/config-schema.md)).
 
@@ -76,9 +76,9 @@ policy and credentials from a **separate, private** companion config repo. Full 
   export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # or pass --out <dir> to init
   python scripts/verify_config.py       # doctor: PASS/FAIL, names what is missing
   ```
-- **Switch configs (hot-swap):** point the env var at another config dir — configs are
+- **Switch configs (hot-swap):** point the env var at another config dir, configs are
   self-contained, no other change: `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`.
-- **Secrets:** Mode B — `secrets/*` is gitignored and never enters git; back up out-of-band.
+- **Secrets:** Mode B, `secrets/*` is gitignored and never enters git; back up out-of-band.
   Credentials bridge into the active config via the config repo's forked `scripts/apply.py`.
 
 ## How to invoke
@@ -89,13 +89,13 @@ growth / funnel / multi-account. (Or run the CLI directly.)
 ## Example output
 
 `run --once` in dry-run prints e.g. `{"status":"ok","dispatch":{"status":"simulated",...},"arm":"armA"}`
-and appends a `simulated` event + a `dry-run.jsonl` line — zero network egress until per-channel live
+and appends a `simulated` event + a `dry-run.jsonl` line, zero network egress until per-channel live
 authorization.
 
 ## Limitations
 
 - Going live is **per-channel, deliberate, and out of scope for build/test** (dry-run only).
-- Several channels ship as **deferred-gaps** (Mastodon/Bluesky/Reddit/X/PH/HN) — registered, not
+- Several channels ship as **deferred-gaps** (Mastodon/Bluesky/Reddit/X/PH/HN), registered, not
   silently dropped; live transports today are email (via `send-gmail.ps1`) and own-server Discord,
   both still behind per-channel authorize.
 - Platform ToS grey areas cannot be eliminated; the throttle/humanize layer lowers, not removes, ban

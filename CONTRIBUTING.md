@@ -1,6 +1,6 @@
 # Contributing to promotion-assistant
 
-A **public, product-agnostic** promotion engine — all copy and credentials live in a separate
+A **public, product-agnostic** promotion engine, all copy and credentials live in a separate
 **private per-product config** repo, never here. Compliance is engineering, not goodwill: the
 fail-closed gates are non-negotiable. Read [`PHILOSOPHY.md`](PHILOSOPHY.md) before changing anything.
 
@@ -9,11 +9,11 @@ fail-closed gates are non-negotiable. Read [`PHILOSOPHY.md`](PHILOSOPHY.md) befo
 1. **Dry-run is the default.** Every real send/post/DM goes through the single `dispatch()` exit,
    which fail-closed requires `product.json.send_mode=="live"` **and** env
    `PROMO_LIVE_AUTHORIZED_<CHANNEL>`. Never add a code path that bypasses that exit.
-2. **Compliance / throttle gates are fail-closed** — no "warn and send". Matchers must resist
+2. **Compliance / throttle gates are fail-closed**, no "warn and send". Matchers must resist
    evasion (unicode / homoglyph / `+tag` alias / mislabeled transport); see
    `tests/test_compliance_hardening.py`. Widen the confusable map / rules, never loosen them.
 3. **Evaluation-driven.** Extend the `selftest.py` E1-E12 signals and `tests/` before the
-   implementation. The suite must stay green — it is the self-evolve merge gate.
+   implementation. The suite must stay green, it is the self-evolve merge gate.
 4. **Secrets never enter this repo.** No product copy, no creds. `secrets/*` is Mode B (gitignored)
    in the config repo; this skill must never read, log, or echo a token.
 5. **Don't reimplement the base.** Scheduling → the `schedule-reminder` CLI only (never its .db);

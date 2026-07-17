@@ -1,8 +1,8 @@
-# L0 — Per-product config repo (Mode B)
+# L0, Per-product config repo (Mode B)
 
 The skill is product-agnostic. All copy, audiences, channel policy and secrets live in a **separate
 private config repo**, located via `PROMO_CONFIG_DIR` (or `~/.promotion-assistant-config`). Fork the
-structure from `companion config kit`'s template; secrets are **always gitignored** (Mode B — promo
+structure from `companion config kit`'s template; secrets are **always gitignored** (Mode B, promo
 OAuth/SMTP creds are high blast-radius and auto-revoked, so the market-intel "Mode A" rationale does
 not apply).
 
@@ -21,11 +21,11 @@ not apply).
 ```
 
 Key fields the engine reads (`scripts/config.py`):
-- `product.json.send_mode` — the global dry-run gate (default `dry_run`).
-- `product.json.aff_base` — conversion anchor; per-channel ref code = channel-level attribution.
+- `product.json.send_mode`, the global dry-run gate (default `dry_run`).
+- `product.json.aff_base`, conversion anchor; per-channel ref code = channel-level attribution.
 - `product.json.banned_claims` / `compliance.physical_address` / `compliance.unsubscribe_url`.
 - `registry.json.channels[].{slug,platform,transport,account_handle,warmup_state}`.
-- `channels/<slug>/policy.json` — throttle policy (hot-swappable, never hardcoded in the skill).
+- `channels/<slug>/policy.json`, throttle policy (hot-swappable, never hardcoded in the skill).
 
 `copy`/`audiences` load as `.json`; `.yaml` is also accepted when PyYAML is installed (the loader
 falls back to a `.json` sibling otherwise, so the engine has zero hard third-party deps).

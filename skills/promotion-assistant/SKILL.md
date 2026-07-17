@@ -20,7 +20,7 @@ description: Automate multi-channel product promotion (email/posts/forum/DM), tr
   → `market-intel`. Scheduling/reminders themselves → this skill *delegates* to the
   `schedule-reminder` base (it does not reimplement scheduling).
 
-## Architecture (six layers, two repos — load `reference/<shard>.md` on demand)
+## Architecture (six layers, two repos, load `reference/<shard>.md` on demand)
 
 | layer | job | shard |
 |---|---|---|
@@ -36,12 +36,12 @@ config** repo. Everything product-specific is config.
 
 ## Three modules (one job, ≤3)
 
-1. **覆盖式 (blast)** — bulk email (deliverability = pool + warmup + SPF/DKIM/DMARC, click/reply/conv
+1. **覆盖式 (blast)**, bulk email (deliverability = pool + warmup + SPF/DKIM/DMARC, click/reply/conv
    not opens) and multi-platform posting graded by ban-risk (own Discord/Mastodon/Bluesky first).
-2. **精准式 (precision)** — forum replies + DMs on an *activity-DNA behavioral baseline* (relative to
+2. **精准式 (precision)**, forum replies + DMs on an *activity-DNA behavioral baseline* (relative to
    the account's own history, not absolute volume); Discord/Telegram only via official bot + own
    channels (selfbot/stranger auto-DM = instant ban).
-3. **指标闭环 (metrics loop)** — six-layer funnel + attribution feed a reward (ban/spam/unsub are
+3. **指标闭环 (metrics loop)**, six-layer funnel + attribution feed a reward (ban/spam/unsub are
    STRONG NEGATIVE), the bandit picks the next arm; the loop is what "self-tune via feedback" means.
 
 ## CLI
@@ -80,7 +80,7 @@ python scripts/cli.py doctor                       # health / compliance / dry-r
 `python scripts/selftest.py` runs E1-E12 (metrics exactness, bandit convergence + drift recovery,
 throttle limits, compliance fail-closed, attribution, dry-run zero-egress, propensity completeness,
 event schema, anti-fingerprint, delayed-conversion censoring, idempotency). All must pass before any
-behavior change ships — this is the self-evolve gate.
+behavior change ships, this is the self-evolve gate.
 
 ## Progressive loading
 

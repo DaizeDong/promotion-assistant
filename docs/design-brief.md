@@ -1,4 +1,4 @@
-# Design Brief — promotion-assistant
+# Design Brief, promotion-assistant
 
 > Produced by skill-smith Step 0 (research-first). The design rationale, auditable.
 > Full architecture: `CodesResearch/_skill-builds/07-promotion-assistant/ARCHITECTURE.md` (8-route recon).

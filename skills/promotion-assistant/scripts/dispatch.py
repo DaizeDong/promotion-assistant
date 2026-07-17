@@ -113,7 +113,7 @@ def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
         events.append(events_path, ev)
         return {"status": result.get("status"), "live": True, "provider": result}
 
-    # ---- SIMULATED (dry-run) — full pipeline, zero egress ----
+    # ---- SIMULATED (dry-run), full pipeline, zero egress ----
     sim = {
         "channel": channel, "platform": platform, "account": account, "action": action,
         "arm_id": decision.get("arm_id"), "audience_segment": decision.get("audience_segment"),

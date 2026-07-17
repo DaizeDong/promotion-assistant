@@ -1,7 +1,7 @@
-# L3 — Compliance + throttle (fail-closed) and the dry-run exit
+# L3, Compliance + throttle (fail-closed) and the dry-run exit
 
 ## Compliance gate (`scripts/compliance.py`, pre-send Side-A)
-Returns `(ok, reasons)`; `dispatch()` rejects on any reason — there is no warn-and-send path.
+Returns `(ok, reasons)`; `dispatch()` rejects on any reason, there is no warn-and-send path.
 - **CAN-SPAM** (email): real From/Reply-to, non-deceptive subject, real physical postal address,
   functional unsubscribe.
 - **GDPR/PECR/CASL**: EU/EEA recipients must have a lawful basis in `compliance/consent-ledger.jsonl`.
@@ -23,5 +23,5 @@ fail-closed: real egress requires `product.json.send_mode=="live"` **AND** env
 `PROMO_LIVE_AUTHORIZED_<CHANNEL>`. Missing either → SIMULATE: run the full pipeline (compliance →
 throttle), write an `event_type=simulated` row + a `metrics/dry-run.jsonl` record (would-send content +
 estimated recipients), and perform ZERO network egress. So the metrics stream + bandit train with no
-real outreach. Verified by E7. **Going live is per-channel and deliberate** — see the config repo's
+real outreach. Verified by E7. **Going live is per-channel and deliberate**, see the config repo's
 `runbooks/live-authorize.md`; the build/test phase is always dry-run.

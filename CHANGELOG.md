@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here (Keep a Changelog style).
 
+## [0.1.3] - 2026-07-18
+### Added
+- **Discord own-server live transport (was a deferred-gap).** `DiscordOwnServerProvider.publish`
+  now, in live mode, posts one announce message to a configured own-server channel via the Discord
+  REST API (stdlib urllib, no new dependency). Credentials come from the channel secret in the
+  environment (`PROMO_DISCORD_BOT_TOKEN` + `PROMO_DISCORD_ANNOUNCE_CHANNEL_ID`), never the repo, and
+  from a dedicated promo bot separate from the alert relay. A real 200 maps to `sent` (with the
+  message id), a 429 to `throttled` so the caller's AIMD reacts to a real rate-limit, other HTTP
+  codes to `error`. The two-switch fail-closed gate is unchanged: reaching this path already means
+  `send_mode=live` AND `PROMO_LIVE_AUTHORIZED_DISCORD_OWN` both passed. `tests/test_discord_live.py`
+  (7 cases, network mocked) covers not-live, missing/invalid creds, success, empty body, 429, 403.
+
 ## [0.1.2] - 2026-07-06
 ### Security
 - **Compliance-matcher evasion hardening.** Banned-claim/body matching now NFKC-normalizes, strips

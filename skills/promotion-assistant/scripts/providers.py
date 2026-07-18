@@ -14,8 +14,12 @@ OAuth posting, Mastodon REST, X API). A deferred-gap is an EXPLICIT gap, never a
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 # Local infra contracts (reused, not reimplemented).
@@ -91,19 +95,54 @@ class EmailProvider(Provider):
 
 
 class DiscordOwnServerProvider(Provider):
-    """Announcements to OWN Discord server via the official bot. Cross-server stranger auto-DM
-    and selfbots are FORBIDDEN (instant ban) — only own-channel + official bot are compliant."""
+    """Announcements to OWN Discord server via a dedicated server-scoped bot. Cross-server stranger
+    auto-DM and selfbots are FORBIDDEN (instant ban) — only own-channel + official bot are compliant.
+
+    Live path: a server-scoped promo bot (SEPARATE from the alert relay bot) posts one message to a
+    configured announce channel via the Discord REST API. Credentials come from the channel secret
+    (env, never the repo): PROMO_DISCORD_BOT_TOKEN + PROMO_DISCORD_ANNOUNCE_CHANNEL_ID. Reaching this
+    method already means dispatch.py cleared compliance + throttle + BOTH live switches."""
     platform = "discord"
     LIVE_TRANSPORT = True
-    deferred_reason = "own-server bot path exists; needs server-scoped promo bot token to go live"
+    deferred_reason = "own-server bot path implemented; set PROMO_DISCORD_BOT_TOKEN + channel to go live"
+    API = "https://discord.com/api/v10"
 
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        # Live posting uses a server-scoped bot (separate from the Big Brother relay). Deferred
-        # until a dedicated promo bot token is authorized.
-        return {"status": "deferred-gap", "platform": self.platform,
-                "reason": "promo bot token not authorized (relay bot is alert-only, not for promo)"}
+        token = os.environ.get("PROMO_DISCORD_BOT_TOKEN", "").strip()
+        channel_id = os.environ.get("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", "").strip()
+        if not token or not channel_id:
+            return {"status": "error", "platform": self.platform,
+                    "reason": "PROMO_DISCORD_BOT_TOKEN / PROMO_DISCORD_ANNOUNCE_CHANNEL_ID not in env "
+                              "(apply the discord-own secret before going live)"}
+        if not channel_id.isdigit():
+            return {"status": "error", "reason": "PROMO_DISCORD_ANNOUNCE_CHANNEL_ID must be a numeric id"}
+        parts = [p for p in (
+            (f"**{payload.get('subject').strip()}**" if payload.get("subject") else None),
+            (payload.get("body") or "").strip() or None,
+            (payload.get("cta") or "").strip() or None,
+        ) if p]
+        content = "\n\n".join(parts)[:1900]  # stay under Discord's 2000-char message cap
+        if not content:
+            return {"status": "error", "reason": "empty message (no subject/body/cta)"}
+        data = json.dumps({"content": content}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.API}/channels/{channel_id}/messages", data=data, method="POST",
+            headers={"Authorization": f"Bot {token}", "Content-Type": "application/json",
+                     "User-Agent": "promotion-assistant (https://github.com/DaizeDong/promotion-assistant, 0.1)"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                resp = json.loads(r.read().decode("utf-8"))
+            return {"status": "sent", "platform": self.platform,
+                    "message_id": resp.get("id"), "channel_id": channel_id}
+        except urllib.error.HTTPError as e:
+            detail = (e.read().decode("utf-8", "replace") or "")[:200]
+            if e.code == 429:  # let the caller's AIMD throttle react to a real rate-limit
+                return {"status": "throttled", "reason": "discord 429", "detail": detail}
+            return {"status": "error", "code": e.code, "reason": detail}
+        except Exception as e:  # pragma: no cover (live-only network)
+            return {"status": "error", "reason": str(e)[:200]}
 
 
 class _DeferredPlatform(Provider):

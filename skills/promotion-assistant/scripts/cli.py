@@ -11,6 +11,9 @@
                                                        aff link + compliance checklist (ToS-hostile
                                                        surfaces: megathread / Chub card / PH / HN)
   promotion-assistant record-post --channel X --url U     log a human's post as 'sent' (loop-close)
+  promotion-assistant content     [guides|card] [--frontend F]  durable SEO setup guides + proxy card
+  promotion-assistant refer       --handle H         mint an advocate ref code + invite copy
+  promotion-assistant growth      [listing|keybot]   Discord-directory listing assets / /key bot spec
   promotion-assistant authorize  --channel X         print the exact per-channel live unlock steps
   promotion-assistant report     [--funnel|--bandit] funnel + arm convergence
   promotion-assistant doctor                         health / compliance / dry-run self-check
@@ -130,6 +133,64 @@ def cmd_record_post(args):
     return 0 if res.get("status") == "recorded" else 1
 
 
+def cmd_content(args):
+    """Generate durable SEO setup guides (+ a proxy card) for a human to publish. Zero egress; every
+    link carries register?aff=<code>; over-claim copy is refused by the compliance floor."""
+    cfg = _load(args)
+    from scripts import content as _content
+    if args.what == "card":
+        res = _content.build_proxy_card(cfg, aff_code=args.aff_code)
+        if res.get("status") != "ok":
+            print(json.dumps(res, ensure_ascii=False)); return 1
+        print("### %s\n" % res["title"]); print(res["blurb"])
+        return 0
+    guides = ([_content.build_guide(cfg, args.frontend, aff_code=args.aff_code)]
+              if args.frontend else _content.build_all(cfg, aff_code=args.aff_code))
+    for g in guides:
+        if g.get("status") != "ok":
+            print("## [%s] %s" % (g.get("frontend"), g.get("reason"))); continue
+        print("\n" + "=" * 70)
+        print(g["markdown"])
+    print("\n(publish these as your own content -- blog/Medium/dev.to; the aff link tracks conversions)")
+    return 0
+
+
+def cmd_refer(args):
+    """Mint an advocate ref code + the invite copy they share (link carries their code -> their
+    referrals attribute back to them). Zero egress; over-claim copy is refused."""
+    cfg = _load(args)
+    from scripts import referral as _referral
+    res = _referral.invite_copy(cfg, args.handle, reward_hint=args.reward or "")
+    if res.get("status") != "ok":
+        print(json.dumps(res, ensure_ascii=False)); return 1
+    print("advocate : %s" % res["advocate"])
+    print("ref code : %s" % res["code"])
+    print("aff link : %s" % res["aff_url"])
+    print("\n--- invite copy (they share this) ---\n")
+    print(res["copy"])
+    return 0
+
+
+def cmd_growth(args):
+    """Generate the Discord-directory listing assets (DISBOARD/top.gg/Discadia) for the owned server,
+    or the /key onboarding-bot spec. Human submits the listing; the server's own bot runs /bump."""
+    cfg = _load(args)
+    from scripts import growth as _growth
+    if args.what == "listing":
+        res = _growth.listing(cfg)
+        print("### Discord server listing (submit to DISBOARD / top.gg / Discadia)\n")
+        print("Name: %s" % res["name"])
+        print("Tags: %s" % ", ".join(res["tags"]))
+        print("\nDescription:\n%s" % res["description"])
+        print("\nSubmit at:")
+        for u in res["directories"]:
+            print("  - %s" % u)
+        print("\nBump: %s" % res["bump_note"])
+    else:  # keybot
+        print(_growth.keybot_spec(cfg))
+    return 0
+
+
 def cmd_authorize(args):
     ch = args.channel.upper().replace("-", "_")
     print("To go LIVE on channel %r (irreversible outreach — only after you control the account):" % args.channel)
@@ -185,6 +246,9 @@ def main(argv=None):
     sa = sub.add_parser("apply"); sa.add_argument("--dry-run", action="store_true"); sa.set_defaults(fn=cmd_apply)
     sp = sub.add_parser("plan"); sp.add_argument("--campaign", required=True); sp.add_argument("--days", type=int, default=7); sp.set_defaults(fn=cmd_plan)
     sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.set_defaults(fn=cmd_run)
+    sco = sub.add_parser("content"); sco.add_argument("what", nargs="?", default="guides", choices=["guides", "card"]); sco.add_argument("--frontend", choices=["janitorai", "sillytavern", "risu", "agnai"]); sco.add_argument("--aff-code", dest="aff_code"); sco.set_defaults(fn=cmd_content)
+    sref = sub.add_parser("refer"); sref.add_argument("--handle", required=True); sref.add_argument("--reward"); sref.set_defaults(fn=cmd_refer)
+    sg = sub.add_parser("growth"); sg.add_argument("what", nargs="?", default="listing", choices=["listing", "keybot"]); sg.set_defaults(fn=cmd_growth)
     spr = sub.add_parser("prep"); spr.add_argument("--campaign", required=True); spr.add_argument("--channel"); spr.set_defaults(fn=cmd_prep)
     src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.set_defaults(fn=cmd_record_post)
     su = sub.add_parser("authorize"); su.add_argument("--channel", required=True); su.set_defaults(fn=cmd_authorize)

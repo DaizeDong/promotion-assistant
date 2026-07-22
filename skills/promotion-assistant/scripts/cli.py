@@ -130,8 +130,10 @@ def cmd_doctor(args):
     print("config root  :", cfg.root)
     print("send_mode    :", cfg.send_mode, "(default dry_run = safe)")
     print("schedule base:", "OK" if ScheduleBridge().available() else "MISSING")
-    print("relay        :", "OK" if (Path.home() / "the notifier").is_file() else "MISSING")
-    print("send-gmail   :", "OK" if (Path.home() / "the SMTP send script").is_file() else "MISSING")
+    notifier = Path(os.path.expanduser(os.environ.get("PROMO_NOTIFIER_PY", "~/.local/notifier.py")))
+    send_gmail = Path(os.path.expanduser(os.environ.get("PROMO_SEND_GMAIL", "~/.local/send-gmail.ps1")))
+    print("relay        :", "OK" if notifier.is_file() else "MISSING")
+    print("send-gmail   :", "OK" if send_gmail.is_file() else "MISSING")
     dry = cfg.metrics_dir() / "dry-run.jsonl"
     print("dry-run log  :", dry, "(exists)" if dry.is_file() else "(none yet)")
     return 0

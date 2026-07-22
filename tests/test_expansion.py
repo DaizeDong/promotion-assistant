@@ -12,6 +12,16 @@ if SCRIPTS not in sys.path:
 
 import compliance  # noqa: E402
 import providers   # noqa: E402
+import content     # noqa: E402
+
+
+class _FakeCfg:
+    """Minimal cfg stand-in for the pure content generator (no config repo needed)."""
+    def __init__(self):
+        self.product = {"product": "TestGW", "url": "https://tg.example",
+                        "value_props": ["cheaper and more stable", "generous free models"]}
+    aff_base = "https://tg.example/register?aff="
+    banned_claims = []
 
 
 # ---- over-claim floor (built-in, non-removable) --------------------------------------------------
@@ -95,3 +105,83 @@ def test_manual_prep_emits_copy_and_checklist():
     assert "hook" in out["copy"] and "register?aff=a" in out["copy"]
     assert isinstance(out["checklist"], list) and out["checklist"]  # a real per-surface checklist
     assert "megathread" in out["surface"].lower()
+
+
+# ---- SEO content generator: honest guides, aff-stamped, over-claim-guarded ----------------------
+def test_content_guide_renders_with_aff_link():
+    g = content.build_guide(_FakeCfg(), "sillytavern", aff_code="seo_st")
+    assert g["status"] == "ok"
+    assert "SillyTavern" in g["markdown"] and "register?aff=seo_st" in g["markdown"]
+    assert "base-URL" in g["markdown"] or "Base URL" in g["markdown"]
+
+
+def test_content_all_frontends():
+    guides = content.build_all(_FakeCfg(), aff_code="x")
+    fes = {g["frontend"] for g in guides if g.get("status") == "ok"}
+    assert {"janitorai", "sillytavern", "risu", "agnai"} <= fes
+
+
+def test_content_unknown_frontend_errors():
+    g = content.build_guide(_FakeCfg(), "nosuchfrontend")
+    assert g["status"] == "error"
+
+
+def test_content_proxy_card_has_aff():
+    c = content.build_proxy_card(_FakeCfg(), aff_code="card_a")
+    assert c["status"] == "ok" and "register?aff=card_a" in c["blurb"]
+
+
+def test_content_over_claim_is_refused():
+    # a cfg whose value_props over-claim must be BLOCKED by the floor at render time
+    cfg = _FakeCfg()
+    cfg.product = {**cfg.product, "value_props": ["unlimited free tokens forever"]}
+    g = content.build_guide(cfg, "janitorai")
+    assert g["status"] == "blocked"
+
+
+# ---- referral module: stable codes, aff-stamped invite, over-claim-guarded, attribution ----------
+import referral  # noqa: E402
+
+
+def test_referral_code_is_stable_and_urlsafe():
+    c1 = referral.advocate_code("CoolUser")
+    c2 = referral.advocate_code("cooluser")  # case-insensitive -> same code (idempotent)
+    assert c1 == c2 and c1.startswith("r_")
+    assert all(ch.isalnum() or ch == "_" for ch in c1)
+
+
+def test_referral_invite_carries_advocate_code():
+    r = referral.invite_copy(_FakeCfg(), "alice")
+    assert r["status"] == "ok"
+    assert r["code"] in r["aff_url"] and r["code"] in r["copy"]
+
+
+def test_referral_invite_over_claim_refused():
+    cfg = _FakeCfg()
+    r = referral.invite_copy(cfg, "bob", reward_hint="unlimited free forever")
+    assert r["status"] == "blocked"
+
+
+def test_referral_attribution():
+    code = referral.advocate_code("carol")
+    evs = [{"event_type": "click", "utm": {"content": code}},
+           {"event_type": "conversion", "utm": {"content": code}},
+           {"event_type": "conversion", "utm": {"content": "other"}}]
+    a = referral.attribute(evs, code)
+    assert a["touches"] == 2 and a["conversions"] == 1 and a["converted"] is True
+
+
+# ---- growth module: listing assets + keybot spec, guard-safe ------------------------------------
+import growth  # noqa: E402
+
+
+def test_growth_listing_has_tags_and_directories():
+    L = growth.listing(_FakeCfg())
+    assert "openai" in L["tags"] and L["directories"]
+    assert "bump" in L["bump_note"].lower() and "ring" in L["bump_note"].lower()  # anti-ring guard present
+
+
+def test_growth_keybot_spec_is_compliant_text():
+    s = growth.keybot_spec(_FakeCfg())
+    assert "/key" in s and "OWN server" in s and "register?aff=discord" in s
+    assert "Never DM users of OTHER servers" in s

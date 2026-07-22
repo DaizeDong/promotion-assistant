@@ -7,6 +7,10 @@
                                                        the config repo's own scripts/apply.py)
   promotion-assistant plan       --campaign C        build content calendar -> schedule-reminder
   promotion-assistant run        --campaign C [--once]   gated dispatch (DRY-RUN by default)
+  promotion-assistant prep       --campaign C [--channel X]  manual-prep: emit human-postable copy +
+                                                       aff link + compliance checklist (ToS-hostile
+                                                       surfaces: megathread / Chub card / PH / HN)
+  promotion-assistant record-post --channel X --url U     log a human's post as 'sent' (loop-close)
   promotion-assistant authorize  --channel X         print the exact per-channel live unlock steps
   promotion-assistant report     [--funnel|--bandit] funnel + arm convergence
   promotion-assistant doctor                         health / compliance / dry-run self-check
@@ -93,6 +97,39 @@ def cmd_run(args):
     return 0
 
 
+def cmd_prep(args):
+    """Manual-prep: emit the finished, bandit-selected copy + aff link + a compliance checklist for a
+    HUMAN to post on a ToS-hostile surface (megathread, Chub card, PH/HN). No egress."""
+    cfg = _load(args)
+    res = _orch.prep_once(cfg, args.campaign, channel=args.channel)
+    if res.get("status") != "prepared":
+        print(json.dumps(res, ensure_ascii=False))
+        return 1
+    p = res["prepared"]
+    print("=" * 66)
+    print("PREP for %s  (arm: %s)" % (p.get("surface"), res.get("arm")))
+    print("=" * 66)
+    print("\n--- COPY (paste this) ---\n")
+    print(p.get("copy"))
+    print("\n--- COMPLIANCE CHECKLIST (a human posts; automated egress here = spam/ban) ---")
+    for line in p.get("checklist", []):
+        print("  [ ] " + line)
+    print("\n--- AFTER YOU POST ---")
+    print("  " + p.get("reminder"))
+    print("  (this records the human post as a 'sent' event so a later register?aff conversion")
+    print("   attributes back to arm %s and the bandit learns)" % res.get("arm"))
+    return 0
+
+
+def cmd_record_post(args):
+    """Close the loop after a human posted a prepped item: writes a real 'sent' event tying the post
+    URL to the arm (attribution + bandit update on a later conversion)."""
+    cfg = _load(args)
+    res = _orch.record_post(cfg, args.channel, args.url, arm_id=args.arm_id, campaign=args.campaign)
+    print(json.dumps(res, ensure_ascii=False))
+    return 0 if res.get("status") == "recorded" else 1
+
+
 def cmd_authorize(args):
     ch = args.channel.upper().replace("-", "_")
     print("To go LIVE on channel %r (irreversible outreach — only after you control the account):" % args.channel)
@@ -148,6 +185,8 @@ def main(argv=None):
     sa = sub.add_parser("apply"); sa.add_argument("--dry-run", action="store_true"); sa.set_defaults(fn=cmd_apply)
     sp = sub.add_parser("plan"); sp.add_argument("--campaign", required=True); sp.add_argument("--days", type=int, default=7); sp.set_defaults(fn=cmd_plan)
     sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.set_defaults(fn=cmd_run)
+    spr = sub.add_parser("prep"); spr.add_argument("--campaign", required=True); spr.add_argument("--channel"); spr.set_defaults(fn=cmd_prep)
+    src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.set_defaults(fn=cmd_record_post)
     su = sub.add_parser("authorize"); su.add_argument("--channel", required=True); su.set_defaults(fn=cmd_authorize)
     srep = sub.add_parser("report"); srep.add_argument("--funnel", action="store_true"); srep.add_argument("--bandit", action="store_true"); srep.set_defaults(fn=cmd_report)
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)

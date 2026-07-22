@@ -13,15 +13,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-RELAY = Path.home() / ".local" / "notifier.py"
+# Local notifier (one-way push to the operator). Env-configurable for portability; the default is
+# a generic per-tool path, never a hardcoded personal install location.
+RELAY = Path(os.path.expanduser(
+    os.environ.get("PROMO_NOTIFIER_PY", "~/.local/notifier.py")))
 
 
 def _egress_cmd():
     """Pluggable Agent Center egress: prefer schedule-reminder's unified relay (#promotion stream)
     when the base is installed; fall back to the Big Brother relay (send.py) so this works
     standalone. Caller appends the message as the final arg."""
-    rp = os.environ.get("SCHEDULE_RELAY_PY") or str(
-        Path.home() / "the scheduler relay")
+    rp = os.environ.get("SCHEDULE_RELAY_PY") or os.path.expanduser(
+        "~/.local/schedule-reminder/relay.py")
     if os.path.isfile(rp):
         return [sys.executable, rp, "send", "--stream", "promotion", "--text"]
     if RELAY.is_file():

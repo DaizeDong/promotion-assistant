@@ -32,7 +32,10 @@ R = []  # (id, name, ok, detail)
 
 
 def rec(i, name, ok, detail=""):
-    R.append((i, name, bool(ok), detail))
+    # Preserve the None GAP-sentinel: both main() and the pytest _assert branch on `ok is None`
+    # to degrade an absent optional base to a skip, not a hard fail. Coercing it to bool would
+    # defeat that contract and turn every environment-dependent gap into a spurious failure.
+    R.append((i, name, ok if ok is None else bool(ok), detail))
 
 
 def _mk_config(tmp, send_mode="dry_run"):

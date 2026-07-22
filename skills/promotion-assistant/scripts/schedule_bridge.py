@@ -12,10 +12,14 @@ Cross-channel dependencies use block/--blocker-id. Contract api_version is addit
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
-REMINDER = Path.home() / ".local" / "schedule-reminder" / "reminder.py"
+# schedule-reminder base CLI. Path is env-configurable so this is portable across machines;
+# the default is a generic per-tool location, never a hardcoded personal install path.
+REMINDER = Path(os.path.expanduser(
+    os.environ.get("PROMO_REMINDER_PY", "~/.local/schedule-reminder/reminder.py")))
 
 
 class ScheduleBridge:
@@ -32,7 +36,6 @@ class ScheduleBridge:
         cmd = ["python", str(self.reminder)] + args
         env = None
         if self.db_path:
-            import os
             env = dict(os.environ, SCHEDULE_DB_PATH=self.db_path)
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                            errors="replace", env=env)

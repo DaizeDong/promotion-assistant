@@ -22,9 +22,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# Local infra contracts (reused, not reimplemented).
-SEND_GMAIL_PS1 = Path.home() / ".local" / "send-gmail.ps1"
-DISCORD_RELAY = Path.home() / ".local" / "notifier.py"
+# Local infra contracts (reused, not reimplemented). Paths are env-configurable for portability;
+# defaults are generic per-tool locations, never hardcoded personal install paths.
+SEND_GMAIL_PS1 = Path(os.path.expanduser(
+    os.environ.get("PROMO_SEND_GMAIL", "~/.local/send-gmail.ps1")))
+DISCORD_RELAY = Path(os.path.expanduser(
+    os.environ.get("PROMO_NOTIFIER_PY", "~/.local/notifier.py")))
 
 # A single, well-formed email recipient (no whitespace/quotes/angle-brackets, exactly one @).
 _EMAIL_RE = re.compile(r"^[^\s@\"'<>]+@[^\s@\"'<>]+\.[^\s@\"'<>]+$")

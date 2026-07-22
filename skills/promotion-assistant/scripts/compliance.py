@@ -54,6 +54,15 @@ _CONFUSABLES = {
 # Unicode "format" chars (category Cf) + soft hyphen are stripped outright.
 _STRIP_EXTRA = {"­"}
 
+# Built-in over-claim floor (see check(): merged with the product's banned_claims, never removable).
+# Scam-adjacent superlatives that competitors over-use; using them taints the brand. Matched as
+# NORMALIZED substrings, so "un­limited free" (zero-width) and homoglyph variants are caught too.
+DEFAULT_OVERCLAIM = [
+    "unlimited free", "free forever", "no limits", "no rate limit", "no rate limits",
+    "never rate limited", "unlimited tokens", "unlimited requests", "100% free",
+    "completely free", "no cost ever", "always free", "infinite tokens",
+]
+
 
 def _normalize_text(s: str) -> str:
     """Fold text to a canonical ASCII-ish form for robust substring matching.
@@ -168,8 +177,13 @@ def check(payload: dict, *, policy: dict, suppression: set, consent: dict) -> tu
 
     # --- banned product claims (any channel), matched on normalized text so zero-width /
     #     homoglyph obfuscation cannot slip a banned claim past the gate ---
+    #     The product's own banned_claims PLUS a built-in over-claim floor: the 2026-07 expansion
+    #     research found that out-claiming competitors ("unlimited free", "no limits") inherits their
+    #     scam-adjacent reputation and gets the brand flamed across the RP scene. These phrases are
+    #     forbidden by DEFAULT for every product; a product can add more via banned_claims but cannot
+    #     remove these -- honest differentiation (stability / breadth / real price), never over-claim.
     body_norm = _normalize_text((payload.get("body") or "") + " " + (payload.get("subject") or ""))
-    for claim in policy.get("banned_claims", []):
+    for claim in list(policy.get("banned_claims", [])) + DEFAULT_OVERCLAIM:
         cn = _normalize_text(claim)
         if cn and cn in body_norm:
             reasons.append("banned claim present: %r" % claim)

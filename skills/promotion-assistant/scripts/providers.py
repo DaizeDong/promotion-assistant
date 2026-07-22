@@ -154,6 +154,106 @@ class DiscordOwnServerProvider(Provider):
             return {"status": "error", "reason": str(e)[:200]}
 
 
+class MastodonProvider(Provider):
+    """Posts to an OWNED Mastodon account's OWN timeline (a compliant self-broadcast for the secondary
+    indie-dev ICP). NO auto-follow, NO reply-spam, NO DMing strangers -- only your own toot. Creds from
+    env (never repo): PROMO_MASTODON_INSTANCE (e.g. https://mastodon.social) + PROMO_MASTODON_TOKEN (an
+    app access token from Preferences > Development). Reaching publish() already means dispatch.py
+    cleared compliance + throttle + BOTH live switches. Instance rules on promo vary -- vet them first."""
+    platform = "mastodon"
+    LIVE_TRANSPORT = True
+    deferred_reason = "Mastodon REST implemented; set PROMO_MASTODON_INSTANCE + PROMO_MASTODON_TOKEN to go live"
+
+    def publish(self, payload, *, live=False):
+        if not live:
+            return self._not_live("publish")
+        instance = os.environ.get("PROMO_MASTODON_INSTANCE", "").strip().rstrip("/")
+        token = os.environ.get("PROMO_MASTODON_TOKEN", "").strip()
+        if not instance or not token:
+            return {"status": "error", "platform": self.platform,
+                    "reason": "PROMO_MASTODON_INSTANCE / PROMO_MASTODON_TOKEN not in env"}
+        parts = [p for p in ((payload.get("subject") or "").strip(), (payload.get("body") or "").strip(),
+                             (payload.get("cta") or "").strip()) if p]
+        status = "\n\n".join(parts)[:490]  # Mastodon default 500-char limit; leave headroom
+        if not status:
+            return {"status": "error", "reason": "empty status"}
+        data = json.dumps({"status": status, "visibility": "public"}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{instance}/api/v1/statuses", data=data, method="POST",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json",
+                     "Idempotency-Key": str(abs(hash(status)))[:32],
+                     "User-Agent": "promotion-assistant (+https://github.com/DaizeDong/promotion-assistant)"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                resp = json.loads(r.read().decode("utf-8"))
+            return {"status": "sent", "platform": self.platform,
+                    "message_id": resp.get("id"), "url": resp.get("url")}
+        except urllib.error.HTTPError as e:
+            detail = (e.read().decode("utf-8", "replace") or "")[:200]
+            if e.code == 429:
+                return {"status": "throttled", "reason": "mastodon 429", "detail": detail}
+            return {"status": "error", "code": e.code, "reason": detail}
+        except Exception as e:  # pragma: no cover (live-only network)
+            return {"status": "error", "reason": str(e)[:200]}
+
+
+class BlueskyProvider(Provider):
+    """Posts to an OWNED Bluesky account's OWN feed via the AT Protocol (compliant self-broadcast).
+    Auth uses an APP PASSWORD (Settings > App Passwords), NEVER the main password. Creds from env:
+    PROMO_BLUESKY_HANDLE (you.bsky.social) + PROMO_BLUESKY_APP_PASSWORD. Two-step: create a session
+    (com.atproto.server.createSession) then create a post record. Reaching publish() already means
+    dispatch.py cleared compliance + throttle + BOTH live switches."""
+    platform = "bluesky"
+    LIVE_TRANSPORT = True
+    deferred_reason = "Bluesky AT-proto implemented; set PROMO_BLUESKY_HANDLE + PROMO_BLUESKY_APP_PASSWORD to go live"
+    PDS = "https://bsky.social"
+
+    def _session(self, handle, app_pw):
+        data = json.dumps({"identifier": handle, "password": app_pw}).encode("utf-8")
+        req = urllib.request.Request(f"{self.PDS}/xrpc/com.atproto.server.createSession",
+                                     data=data, method="POST",
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read().decode("utf-8"))
+
+    def publish(self, payload, *, live=False):
+        if not live:
+            return self._not_live("publish")
+        handle = os.environ.get("PROMO_BLUESKY_HANDLE", "").strip()
+        app_pw = os.environ.get("PROMO_BLUESKY_APP_PASSWORD", "").strip()
+        if not handle or not app_pw:
+            return {"status": "error", "platform": self.platform,
+                    "reason": "PROMO_BLUESKY_HANDLE / PROMO_BLUESKY_APP_PASSWORD not in env"}
+        parts = [p for p in ((payload.get("subject") or "").strip(), (payload.get("body") or "").strip(),
+                             (payload.get("cta") or "").strip()) if p]
+        text = "\n\n".join(parts)[:300]  # Bluesky 300-char limit
+        if not text:
+            return {"status": "error", "reason": "empty post"}
+        try:
+            sess = self._session(handle, app_pw)
+            did, jwt = sess.get("did"), sess.get("accessJwt")
+            if not did or not jwt:
+                return {"status": "error", "reason": "bluesky session had no did/accessJwt"}
+            import datetime as _dt
+            record = {"repo": did, "collection": "app.bsky.feed.post",
+                      "record": {"$type": "app.bsky.feed.post", "text": text,
+                                 "createdAt": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")}}
+            data = json.dumps(record).encode("utf-8")
+            req = urllib.request.Request(f"{self.PDS}/xrpc/com.atproto.repo.createRecord",
+                                         data=data, method="POST",
+                                         headers={"Authorization": f"Bearer {jwt}", "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                resp = json.loads(r.read().decode("utf-8"))
+            return {"status": "sent", "platform": self.platform, "message_id": resp.get("uri")}
+        except urllib.error.HTTPError as e:
+            detail = (e.read().decode("utf-8", "replace") or "")[:200]
+            if e.code == 429:
+                return {"status": "throttled", "reason": "bluesky 429", "detail": detail}
+            return {"status": "error", "code": e.code, "reason": detail}
+        except Exception as e:  # pragma: no cover (live-only network)
+            return {"status": "error", "reason": str(e)[:200]}
+
+
 class ManualPrepProvider(Provider):
     """A channel whose ONLY compliant path is a HUMAN posting (the ToS-hostile / anti-ad surfaces:
     r/SillyTavernAI's weekly megathread, organic 'what API' answers, a Chub/JanitorAI proxy-guide
@@ -209,10 +309,12 @@ def build_registry():
     return {
         "email": EmailProvider(),
         "discord": DiscordOwnServerProvider(),
-        # DEFERRED-AUTO: a compliant automated transport is buildable but not wired yet (owned-account
-        # REST). These stay _DeferredPlatform until their provider class ships.
-        "mastodon": _DeferredPlatform("mastodon", "Mastodon REST app token not configured (free, deferred)"),
-        "bluesky": _DeferredPlatform("bluesky", "Bluesky app-password API not configured (free, deferred)"),
+        # AUTOMATED (owned-account self-timeline REST): compliant self-broadcast. Still gated by
+        # dispatch.py's two switches + throttle; needs owned-account creds in env to actually send.
+        "mastodon": MastodonProvider(),
+        "bluesky": BlueskyProvider(),
+        # DEFERRED: X free tier (~17/day) is unusable and paid isn't justified until owned surfaces
+        # saturate (per the 2026-07 research). Stays an explicit gap.
         "x": _DeferredPlatform("x", "X API free tier unusable (~17/day); Basic/paid deferred"),
         # MANUAL-PREP: a human must post (ToS-hostile / anti-ad surfaces). The skill preps + tracks;
         # automated egress here would be spam/ban, so LIVE_TRANSPORT is permanently False.

@@ -18,6 +18,7 @@ from . import bandit as _bandit
 from . import dispatch as _dispatch
 from . import events as _events
 from . import metrics as _metrics
+from . import providers as _providers
 from . import throttle as _throttle
 from .schedule_bridge import ScheduleBridge
 
@@ -107,3 +108,72 @@ def run_once(cfg, campaign: str, *, env=None, clock=None, rng=None, conversion_w
         band.save()
     return {"status": "ok", "dispatch": res, "arm": pick["arm_id"],
             "reward": r, "reward_status": status}
+
+
+def prep_once(cfg, campaign: str, *, channel=None, rng=None):
+    """Manual-prep path: bandit-select an arm and emit the FINISHED copy + aff link + a compliant
+    posting checklist for a HUMAN to post. No egress ever. Records a 'prepared' event so the bandit
+    draw (arm/propensity/policy_version) is visible to OPE; the human's real post is logged later via
+    record_post(), which writes the 'sent' event that closes the loop. Use for ToS-hostile surfaces
+    (megathread, organic answers, Chub card, PH/HN) where an API post would be spam/ban."""
+    metrics_dir = cfg.metrics_dir()
+    events_path = metrics_dir / "events.jsonl"
+    band = _bandit.Bandit(metrics_dir / "bandit-state.json", rng=rng)
+    arms = cfg.copy(campaign)
+    if channel:  # prep for a specific channel: restrict the arm pool to that channel's arms
+        arms = [a for a in arms if a.get("channel") == channel] or arms
+    arm_ids = [a.get("id") for a in arms if a.get("id")]
+    if not arm_ids:
+        return {"status": "empty", "reason": "no arms for channel %r" % channel}
+    pick = band.select(arm_ids)
+    arm = next(a for a in arms if a.get("id") == pick["arm_id"])
+    ch = arm.get("channel", "unknown")
+    aff = cfg.aff_base + (arm.get("utm", {}).get("content") or arm.get("id", ""))
+    payload = {"subject": arm.get("hook"), "body": arm.get("body", ""), "cta": aff,
+               "utm": arm.get("utm", {})}
+    prov = _providers.get((cfg.channel(ch) or {}).get("platform", ch))
+    if not hasattr(prov, "prep"):
+        return {"status": "not-manual", "reason": "channel %r is not a manual-prep surface "
+                "(use `run` for automated/dry-run channels)" % ch}
+    prepared = prov.prep(payload)
+    # record the draw so OPE sees the arm was played (no egress; value carried when human posts)
+    ev = _events.make_event(ch, "prepared", platform=(cfg.channel(ch) or {}).get("platform", ch),
+                            account=(cfg.channel(ch) or {}).get("account_handle", "default"),
+                            arm_id=pick["arm_id"], audience_segment=arm.get("segment"),
+                            decision_id="%s:%s" % (campaign, pick["arm_id"]),
+                            propensity_p=pick["propensity_p"], policy_version=pick["policy_version"],
+                            utm=arm.get("utm", {}), value=0.0)
+    _events.append(events_path, ev)
+    return {"status": "prepared", "channel": ch, "arm": pick["arm_id"], "prepared": prepared,
+            "decision_id": ev["decision_id"]}
+
+
+def record_post(cfg, channel: str, url: str, *, arm_id=None, campaign=None):
+    """Close the loop after a human posted a prepped item: write a real 'sent' event tying the post
+    URL to the arm, so a later register?aff conversion attributes back and the bandit updates. If
+    arm_id is omitted, use the most recent 'prepared' event for this channel."""
+    metrics_dir = cfg.metrics_dir()
+    events_path = metrics_dir / "events.jsonl"
+    evs = _events.read(events_path)
+    if not arm_id:  # find the latest 'prepared' for this channel
+        preps = [e for e in evs if e.get("channel") == channel and e.get("event_type") == "prepared"]
+        if not preps:
+            return {"status": "error", "reason": "no prior 'prepared' event for channel %r; pass "
+                    "--arm-id explicitly" % channel}
+        last = max(preps, key=lambda e: e.get("ts", 0))
+        arm_id = last.get("arm_id")
+        decision_id = last.get("decision_id")
+        platform = last.get("platform"); segment = last.get("audience_segment")
+        propensity = last.get("propensity_p"); policy = last.get("policy_version"); utm = last.get("utm")
+    else:
+        decision_id = "%s:%s" % (campaign or "manual", arm_id)
+        platform = (cfg.channel(channel) or {}).get("platform", channel); segment = None
+        propensity = None; policy = None; utm = {}
+    ev = _events.make_event(channel, "sent", platform=platform,
+                            account=(cfg.channel(channel) or {}).get("account_handle", "default"),
+                            arm_id=arm_id, audience_segment=segment, decision_id=decision_id,
+                            propensity_p=propensity, policy_version=policy, utm=utm,
+                            live=True, post_url=url, actuator="human")
+    _events.append(events_path, ev)
+    return {"status": "recorded", "channel": channel, "arm_id": arm_id, "url": url,
+            "event_id": ev["event_id"]}

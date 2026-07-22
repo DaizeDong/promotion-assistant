@@ -24,6 +24,10 @@ EVENT_TYPES = {
     "bounce", "unsub", "complaint", "blocked", "ratelimited", "shadowban",
     # build-time
     "simulated",
+    # manual-prep channels: 'prepared' = the skill emitted arm copy for a human to post (records the
+    # bandit draw so OPE sees it); the human's actual post is later logged as a normal 'sent' via
+    # `record-post`, closing the loop for human-actuated (ToS-hostile) surfaces.
+    "prepared",
 }
 
 REQUIRED = ("event_id", "ts", "channel", "event_type")

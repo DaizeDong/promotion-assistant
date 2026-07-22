@@ -154,6 +154,48 @@ class DiscordOwnServerProvider(Provider):
             return {"status": "error", "reason": str(e)[:200]}
 
 
+class ManualPrepProvider(Provider):
+    """A channel whose ONLY compliant path is a HUMAN posting (the ToS-hostile / anti-ad surfaces:
+    r/SillyTavernAI's weekly megathread, organic 'what API' answers, a Chub/JanitorAI proxy-guide
+    card, a ProductHunt/Show HN launch). Automated egress here would be spam and would get the
+    account -- and the brand -- banned, so LIVE_TRANSPORT stays False FOREVER: publish/dm never send.
+
+    But 'manual' must not mean 'inert': the skill still does the work a human can't, and the bandit
+    still learns. Two verbs make the human a first-class actuator:
+      prep(payload)         -> the finished, arm-selected copy + aff link + a compliant posting
+                               checklist for THIS surface. No egress. The caller records a
+                               'prepared' event (arm/propensity/policy_version) so OPE sees the draw.
+      record_post(url,...)  -> the human posted; write a real 'sent' event tying that post to the arm
+                               so a later conversion on register?aff attributes back and the bandit
+                               updates. This is the loop-close for human-actuated channels.
+
+    Compliance is structural: no code path here can emit to the network, so 'never auto-post to a
+    ToS-hostile surface' is enforced by construction, not by a flag someone can flip."""
+    LIVE_TRANSPORT = False  # permanent: a human is the actuator, never the API
+
+    def __init__(self, platform, guidance, surface=""):
+        self.platform = platform
+        self.surface = surface or platform
+        self.guidance = guidance  # a compliant posting checklist specific to this surface
+        self.deferred_reason = ("manual-prep channel: the skill prepares copy + tracks; a HUMAN posts "
+                                "(automated egress would be spam/ban). Use `prep` then `record-post`.")
+
+    def prep(self, payload):
+        """Return the finished post a human will paste, plus a compliance checklist. No egress."""
+        parts = [p for p in (payload.get("subject"), (payload.get("body") or "").strip(),
+                             (payload.get("cta") or "").strip()) if p]
+        return {
+            "status": "prepared",
+            "platform": self.platform,
+            "surface": self.surface,
+            "copy": "\n\n".join(parts),
+            "cta": payload.get("cta"),
+            "checklist": self.guidance,
+            "reminder": "Post this by hand on %s, then run: promotion-assistant record-post "
+                        "--channel <slug> --url <permalink>" % self.surface,
+        }
+
+
 class _DeferredPlatform(Provider):
     def __init__(self, platform, reason):
         self.platform = platform
@@ -167,13 +209,42 @@ def build_registry():
     return {
         "email": EmailProvider(),
         "discord": DiscordOwnServerProvider(),
+        # DEFERRED-AUTO: a compliant automated transport is buildable but not wired yet (owned-account
+        # REST). These stay _DeferredPlatform until their provider class ships.
         "mastodon": _DeferredPlatform("mastodon", "Mastodon REST app token not configured (free, deferred)"),
         "bluesky": _DeferredPlatform("bluesky", "Bluesky app-password API not configured (free, deferred)"),
-        "reddit": _DeferredPlatform("reddit", "Reddit OAuth posting per-subreddit not configured (deferred)"),
         "x": _DeferredPlatform("x", "X API free tier unusable (~17/day); Basic/paid deferred"),
-        "janitorai-card": _DeferredPlatform("janitorai-card", "character-card proxy-guide is manual publish (deferred)"),
-        "producthunt": _DeferredPlatform("producthunt", "PH launch is a manual human event (prep-only)"),
-        "hackernews": _DeferredPlatform("hackernews", "Show HN is manual, no vote/post automation (prep-only)"),
+        # MANUAL-PREP: a human must post (ToS-hostile / anti-ad surfaces). The skill preps + tracks;
+        # automated egress here would be spam/ban, so LIVE_TRANSPORT is permanently False.
+        "reddit": ManualPrepProvider(
+            "reddit", surface="the r/SillyTavernAI weekly Models/APIs megathread",
+            guidance=[
+                "ONLY post in the designated weekly megathread or as an organic answer to a 'what API' "
+                "question -- NEVER a top-level ad post (that is spam and gets removed/banned).",
+                "Post from an AGED account with real karma; a fresh account is shadowbanned on sight.",
+                "Lead with genuine help; the aff link is secondary, never the whole comment.",
+                "Do not repost the same copy across subs; respect each sub's self-promo rule (often 9:1).",
+            ]),
+        "janitorai-card": ManualPrepProvider(
+            "janitorai-card", surface="a Chub / JanitorAI proxy-guide character card or setup post",
+            guidance=[
+                "Publish as YOUR OWN content (a SFW proxy-guide card / setup guide) -- your content, no "
+                "platform ToS issue.",
+                "Honest instructions only. NO 'unlimited free' / 'no limits' claims (banned_claims).",
+                "Every link carries register?aff=<code>. Keep it a genuine how-to, not an ad.",
+            ]),
+        "producthunt": ManualPrepProvider(
+            "producthunt", surface="a ProductHunt launch (Tue/Wed/Thu, 12:01 PST)",
+            guidance=[
+                "Manual human launch only. NEVER solicit or ring votes -- that is ToS violation + delisting.",
+                "The skill preps the assets/copy and tracks the outcome; a human runs the launch.",
+            ]),
+        "hackernews": ManualPrepProvider(
+            "hackernews", surface="a Show HN post",
+            guidance=[
+                "Show HN, manual, with a gateless working demo. NEVER vote-ring or use sockpuppets.",
+                "Honest, technical framing for the indie-dev ICP; the skill preps + tracks only.",
+            ]),
     }
 
 

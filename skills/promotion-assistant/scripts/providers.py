@@ -126,7 +126,13 @@ class DiscordOwnServerProvider(Provider):
         content = "\n\n".join(parts)[:1900]  # stay under Discord's 2000-char message cap
         if not content:
             return {"status": "error", "reason": "empty message (no subject/body/cta)"}
-        data = json.dumps({"content": content}).encode("utf-8")
+        # Suppress Discord's auto link-preview card by default: these are frequent changelog posts, and
+        # a big unfurled website card on every one is noisy -- a clickable link is enough. flags=4 is
+        # SUPPRESS_EMBEDS. Set PROMO_DISCORD_ALLOW_EMBED=1 for a rare launch post that wants the card.
+        body = {"content": content}
+        if not os.environ.get("PROMO_DISCORD_ALLOW_EMBED", "").strip():
+            body["flags"] = 4
+        data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
             f"{self.API}/channels/{channel_id}/messages", data=data, method="POST",
             headers={"Authorization": f"Bot {token}", "Content-Type": "application/json",

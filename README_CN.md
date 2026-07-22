@@ -43,7 +43,7 @@ git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins
 ```
 
 然后建一个「每产品 config 仓」(fork `companion config kit` 模板，Mode B secrets)并指向它:
-`export PROMO_CONFIG_DIR=~/CodesSelf/<product>-promo-config`。
+`export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`。
 
 ## 快速开始
 

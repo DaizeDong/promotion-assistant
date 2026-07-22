@@ -46,7 +46,7 @@ def find_config_dir(explicit: str | None = None) -> Path:
             return c.resolve()
     raise ConfigError(
         "no product config found. Set PROMO_CONFIG_DIR to your config repo "
-        "(see runbooks/new-machine.md), e.g. export PROMO_CONFIG_DIR=~/CodesSelf/promotion-assistant-config"
+        "(see runbooks/new-machine.md), e.g. export PROMO_CONFIG_DIR=~/CodesClaude/promotion-assistant-config"
     )
 
 

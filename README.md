@@ -47,7 +47,7 @@ git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins
 ```
 
 Then create a per-product config repo (fork the `companion config kit` template, Mode B secrets) and
-point the skill at it: `export PROMO_CONFIG_DIR=~/CodesSelf/<product>-promo-config`.
+point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
 
 ## Quick start
 

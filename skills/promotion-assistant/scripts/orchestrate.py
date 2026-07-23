@@ -60,14 +60,24 @@ def plan(cfg, campaign: str, *, start=None, bridge: ScheduleBridge | None = None
             "base_available": bridge.available()}
 
 
-def run_once(cfg, campaign: str, *, env=None, clock=None, rng=None, conversion_window_s=None):
-    """One planning slot per arm: bandit-select -> dispatch (gated) -> daily ETL learn."""
+def run_once(cfg, campaign: str, *, env=None, clock=None, rng=None, conversion_window_s=None, channel=None):
+    """One planning slot per arm: bandit-select -> dispatch (gated) -> daily ETL learn.
+
+    channel: if given, restrict the bandit's arm pool to that channel's arms. This mirrors
+    prep_once(channel=) and matches the per-channel live-authorization model -- e.g. going live
+    on discord-own alone shouldn't let the global bandit pick a reddit arm. Omit for the default
+    cross-channel bandit run."""
     metrics_dir = cfg.metrics_dir()
     events_path = metrics_dir / "events.jsonl"
     band = _bandit.Bandit(metrics_dir / "bandit-state.json", rng=rng)
     thr = _throttle.Throttle(metrics_dir / "throttle-state.json", clock=clock, rng=rng)
 
     arms = cfg.copy(campaign)
+    if channel:  # scope to one channel's arms (per-channel go-live control)
+        scoped = [a for a in arms if a.get("channel") == channel]
+        if not scoped:
+            return {"status": "empty", "reason": "no arms for channel %r" % channel}
+        arms = scoped
     arm_ids = [a.get("id") for a in arms if a.get("id")]
     if not arm_ids:
         return {"status": "empty", "reason": "no arms"}

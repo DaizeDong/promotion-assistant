@@ -95,7 +95,8 @@ def cmd_run(args):
     cw = int(args.conversion_window_days) * 86400 if args.conversion_window_days else None
     n = 1 if args.once else int(args.cycles)
     for _ in range(n):
-        res = _orch.run_once(cfg, args.campaign, env=os.environ, conversion_window_s=cw)
+        res = _orch.run_once(cfg, args.campaign, env=os.environ, conversion_window_s=cw,
+                             channel=getattr(args, "channel", None))
         print(json.dumps(res, ensure_ascii=False))
     return 0
 
@@ -245,7 +246,7 @@ def main(argv=None):
     sc = sub.add_parser("channels"); sc.add_argument("what", nargs="?", default="list"); sc.set_defaults(fn=cmd_channels)
     sa = sub.add_parser("apply"); sa.add_argument("--dry-run", action="store_true"); sa.set_defaults(fn=cmd_apply)
     sp = sub.add_parser("plan"); sp.add_argument("--campaign", required=True); sp.add_argument("--days", type=int, default=7); sp.set_defaults(fn=cmd_plan)
-    sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.set_defaults(fn=cmd_run)
+    sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.add_argument("--channel", help="restrict the bandit arm pool to one channel (per-channel go-live)"); sr.set_defaults(fn=cmd_run)
     sco = sub.add_parser("content"); sco.add_argument("what", nargs="?", default="guides", choices=["guides", "card"]); sco.add_argument("--frontend", choices=["janitorai", "sillytavern", "risu", "agnai"]); sco.add_argument("--aff-code", dest="aff_code"); sco.set_defaults(fn=cmd_content)
     sref = sub.add_parser("refer"); sref.add_argument("--handle", required=True); sref.add_argument("--reward"); sref.set_defaults(fn=cmd_refer)
     sg = sub.add_parser("growth"); sg.add_argument("what", nargs="?", default="listing", choices=["listing", "keybot"]); sg.set_defaults(fn=cmd_growth)

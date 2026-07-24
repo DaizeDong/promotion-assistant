@@ -28,6 +28,10 @@ EVENT_TYPES = {
     # bandit draw so OPE sees it); the human's actual post is later logged as a normal 'sent' via
     # `record-post`, closing the loop for human-actuated (ToS-hostile) surfaces.
     "prepared",
+    # participation copilot (human-in-the-loop community participation): 'drafted' = the copilot
+    # produced a genuine-help draft for a human to edit and post; the human's actual contribution is
+    # later logged via `participate record`, closing the attribution loop with their real permalink.
+    "drafted",
 }
 
 REQUIRED = ("event_id", "ts", "channel", "event_type")

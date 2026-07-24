@@ -158,6 +158,30 @@ def prep_once(cfg, campaign: str, *, channel=None, rng=None):
             "decision_id": ev["decision_id"]}
 
 
+def record_participation(cfg, url: str, *, thread=None):
+    """Close the participation loop after the HUMAN posted a genuine contribution. Writes a 'sent'
+    event on the 'reddit-participation' channel tying the human's real permalink to the most recent
+    'drafted' event (or standalone if none), actuator='human'. A later register?aff conversion on
+    the aff link the human chose to include attributes back through this URL. The human is always
+    the sole actuator -- this only records what they already did by hand."""
+    metrics_dir = cfg.metrics_dir()
+    events_path = metrics_dir / "events.jsonl"
+    evs = _events.read(events_path)
+    channel = "reddit-participation"
+    drafts = [e for e in evs if e.get("channel") == channel and e.get("event_type") == "drafted"]
+    last = max(drafts, key=lambda e: e.get("ts", 0)) if drafts else None
+    ev = _events.make_event(
+        channel, "sent", platform="reddit",
+        account=(cfg.channel(channel) or {}).get("account_handle", "self"),
+        arm_id=(last or {}).get("arm_id"),
+        decision_id=(last or {}).get("decision_id"),
+        utm=(last or {}).get("utm", {}),
+        live=True, post_url=url, actuator="human", thread=thread)
+    _events.append(events_path, ev)
+    return {"status": "recorded", "channel": channel, "url": url, "event_id": ev["event_id"],
+            "linked_draft": (last or {}).get("event_id")}
+
+
 def record_post(cfg, channel: str, url: str, *, arm_id=None, campaign=None):
     """Close the loop after a human posted a prepped item: write a real 'sent' event tying the post
     URL to the arm, so a later register?aff conversion attributes back and the bandit updates. If

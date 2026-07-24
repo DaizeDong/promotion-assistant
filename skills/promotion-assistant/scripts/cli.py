@@ -14,6 +14,10 @@
   promotion-assistant content     [guides|card] [--frontend F]  durable SEO setup guides + proxy card
   promotion-assistant refer       --handle H         mint an advocate ref code + invite copy
   promotion-assistant growth      [listing|keybot]   Discord-directory listing assets / /key bot spec
+  promotion-assistant participate discover --sub S   compliant human-in-loop community copilot:
+  promotion-assistant participate draft --url U        surface threads your expertise fits, draft a
+  promotion-assistant participate status               genuine reply you edit+post BY HAND, track
+  promotion-assistant participate record --url U       give-before-ask readiness, attribute your posts
   promotion-assistant authorize  --channel X         print the exact per-channel live unlock steps
   promotion-assistant report     [--funnel|--bandit] funnel + arm convergence
   promotion-assistant doctor                         health / compliance / dry-run self-check
@@ -134,6 +138,145 @@ def cmd_record_post(args):
     return 0 if res.get("status") == "recorded" else 1
 
 
+def cmd_participate(args):
+    """Compliant, human-in-the-loop community-participation copilot. Augments a REAL person's
+    genuine participation -- discovers threads their expertise fits, drafts a genuine answer they
+    edit, tracks their give-before-ask readiness, and records their own posts for attribution.
+    NEVER posts/votes (no egress path); the human is always the publisher and endorser."""
+    cfg = _load(args)
+    from scripts import participation as _p
+    from scripts import reddit_read as _rr
+    sub = args.what
+
+    if sub == "discover":
+        # Read-only. Prefer official OAuth (your account); else emit the site:reddit.com queries for
+        # the operator to run through their search tooling (tavily/brightdata). Never scrapes.
+        secrets = cfg.root / "secrets" / "reddit.env"
+        creds = _rr.load_reddit_creds(secrets)
+        posts = []
+        if creds:
+            tok, err = _rr.get_oauth_token(creds)
+            if tok:
+                posts, ferr = _rr.fetch_new(args.sub, tok, creds["REDDIT_USER_AGENT"],
+                                            limit=int(args.limit))
+                if ferr:
+                    print("fetch error: %s" % ferr)
+            else:
+                print("oauth error: %s" % err)
+        if not posts:
+            pains = (cfg.product.get("pain_points")
+                     or ["proxy 500 errors", "rate limits", "which API to use"])
+            cat = cfg.product.get("category", "OpenAI-compatible gateway")
+            comps = cfg.product.get("competitors", [])
+            queries = _rr.build_search_queries(pains, cat, competitors=comps, subreddit=args.sub)
+            print("No Reddit OAuth creds (secrets/reddit.env) -- run these site:reddit.com searches")
+            print("through your search tooling (tavily/brightdata), then feed results back:\n")
+            for q in queries[:12]:
+                print("  " + q)
+            return 0
+        import time as _t
+        ranked = _p.rank_opportunities(posts, now_ts=_t.time())
+        shown = [r for r in ranked if r["_score"]["label"] in ("immediate", "build")][:int(args.top)]
+        print("=" * 66)
+        print("OPPORTUNITY QUEUE  r/%s  (%d scored, showing top %d actionable)"
+              % (args.sub, len(ranked), len(shown)))
+        print("=" * 66)
+        for r in shown:
+            s = r["_score"]
+            print("\n[%s  score=%.2f]  %s" % (s["label"].upper(), s["total"], r["title"][:80]))
+            print("  fit=%.2f need=%.2f fresh=%.2f unanswered=%.2f  %s"
+                  % (s["scores"].get("expertise_fit", 0), s["scores"].get("need_intensity", 0),
+                     s["scores"].get("freshness", 0), s["scores"].get("unanswered", 0),
+                     r.get("permalink", "")))
+        print("\n(these are SURFACED for you to consider -- draft a genuine reply with:")
+        print(" promotion-assistant participate draft --url <permalink>)")
+        return 0
+
+    if sub == "draft":
+        # Build a genuine-help draft grounded in the person's real expertise. Draft-only.
+        from scripts import participation as _pp
+        graduated = bool(args.graduated)
+        product = cfg.product.get("product") or cfg.product.get("name") or "the product"
+        aff = cfg.aff_base + (args.aff_code or "reddit_participation")
+        # thread context: the human pastes title/body (or a fetched post could be passed); keep simple
+        post = {"title": args.title or "", "body": args.body or "", "intent": args.intent}
+        prompt = _pp.build_draft_prompt(post, graduated=graduated, product=product, aff_url=aff)
+        draft_text = None
+        try:
+            import llmcall
+            res = llmcall.call(prompt, mode="agent")
+            draft_text = getattr(res, "text", None) or str(res)
+        except Exception as e:
+            print("(llmcall unavailable: %s -- here is the prompt to run manually)\n" % str(e)[:80])
+            print(prompt)
+            return 0
+        # over-claim guard on the generated draft
+        from scripts import compliance as _c
+        ok, reasons = _c.check({"body": draft_text, "transport": "post"},
+                               policy={"banned_claims": cfg.banned_claims},
+                               suppression=set(), consent={})
+        # record a 'drafted' event (attribution scaffold)
+        ev = _events.make_event("reddit-participation", "drafted", platform="reddit",
+                                account="self", value=0.0,
+                                utm={"source": "reddit", "medium": "comment",
+                                     "content": args.aff_code or "reddit_participation"},
+                                graduated=graduated)
+        _events.append(cfg.metrics_dir() / "events.jsonl", ev)
+        print("=" * 66)
+        print("DRAFT REPLY  (edit in your own voice, then post BY HAND)")
+        print("=" * 66)
+        if not ok:
+            print("!! over-claim guard flagged the draft: %s" % "; ".join(reasons))
+            print("!! revise before posting.\n")
+        print("\n" + (draft_text or "").strip() + "\n")
+        print("-" * 66)
+        print("After you post it yourself, close the loop:")
+        print("  promotion-assistant participate record --url <your-comment-permalink>")
+        return 0
+
+    if sub == "status":
+        # Readiness dashboard: give-before-ask ledger + account standing + graduation criteria.
+        from scripts import participation as _pp
+        evs = _events.read(cfg.metrics_dir() / "events.jsonl")
+        parts = [e for e in evs if e.get("channel") == "reddit-participation"]
+        # ledger: 'drafted'/'sent' non-promo = give; anything carrying an aff link intent = ask.
+        entries = []
+        for e in parts:
+            if e.get("event_type") in ("drafted", "sent"):
+                is_ask = bool((e.get("utm", {}) or {}).get("content")) and e.get("graduated")
+                entries.append({"type": "ask" if is_ask else "give",
+                                "url": e.get("post_url"), "ts": e.get("ts")})
+        account = {
+            "age_days": args.age_days, "karma": args.karma,
+            "sub_gives": sum(1 for x in entries if x["type"] == "give" and x.get("url")),
+            "mod_strikes": args.strikes or 0,
+        }
+        rd = _pp.readiness(account, entries)
+        print("=" * 66)
+        print("PARTICIPATION READINESS")
+        print("=" * 66)
+        lb = rd["ledger"]
+        print("give-before-ask ledger: %d gives / %d asks  (ratio %s, 9:1 %s)"
+              % (lb["gives"], lb["asks"],
+                 ("inf" if lb["ratio"] == float("inf") else "%.1f" % lb["ratio"]),
+                 "HELD" if lb["holds_9to1"] else "NOT held"))
+        print("\ngraduation criteria (%d/%d met):" % (rd["met"], rd["total"]))
+        for c in rd["criteria"]:
+            print("  [%s] %s" % ("x" if c["met"] else " ", c["detail"]))
+        print("\n=> %s" % rd["verdict"])
+        if rd["next"]:
+            print("   next: %s" % rd["next"][0])
+        return 0
+
+    if sub == "record":
+        res = _orch.record_participation(cfg, args.url, thread=args.thread)
+        print(json.dumps(res, ensure_ascii=False))
+        return 0 if res.get("status") == "recorded" else 1
+
+    print("unknown participate action: %r" % sub)
+    return 1
+
+
 def cmd_content(args):
     """Generate durable SEO setup guides (+ a proxy card) for a human to publish. Zero egress; every
     link carries register?aff=<code>; over-claim copy is refused by the compliance floor."""
@@ -252,6 +395,22 @@ def main(argv=None):
     sg = sub.add_parser("growth"); sg.add_argument("what", nargs="?", default="listing", choices=["listing", "keybot"]); sg.set_defaults(fn=cmd_growth)
     spr = sub.add_parser("prep"); spr.add_argument("--campaign", required=True); spr.add_argument("--channel"); spr.set_defaults(fn=cmd_prep)
     src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.set_defaults(fn=cmd_record_post)
+    spa = sub.add_parser("participate")
+    spa.add_argument("what", choices=["discover", "draft", "status", "record"])
+    spa.add_argument("--sub", help="subreddit (discover)")
+    spa.add_argument("--limit", default=25, help="discover: posts to fetch")
+    spa.add_argument("--top", default=8, help="discover: actionable leads to show")
+    spa.add_argument("--url", help="draft-source or record: post/comment permalink")
+    spa.add_argument("--title", help="draft: the thread title")
+    spa.add_argument("--body", help="draft: the thread body")
+    spa.add_argument("--intent", help="draft: recommendation|troubleshooting|comparison|workflow")
+    spa.add_argument("--aff-code", dest="aff_code", help="draft: aff tracking code")
+    spa.add_argument("--graduated", action="store_true", help="draft: account has graduated (allow 90/10 disclosed mention)")
+    spa.add_argument("--age-days", dest="age_days", type=int, help="status: account age in days")
+    spa.add_argument("--karma", type=int, help="status: account karma")
+    spa.add_argument("--strikes", type=int, help="status: mod removals/strikes")
+    spa.add_argument("--thread", help="record: source thread url")
+    spa.set_defaults(fn=cmd_participate)
     su = sub.add_parser("authorize"); su.add_argument("--channel", required=True); su.set_defaults(fn=cmd_authorize)
     srep = sub.add_parser("report"); srep.add_argument("--funnel", action="store_true"); srep.add_argument("--bandit", action="store_true"); srep.set_defaults(fn=cmd_report)
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)

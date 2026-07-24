@@ -44,6 +44,17 @@ config** repo. Everything product-specific is config.
 3. **指标闭环 (metrics loop)**, six-layer funnel + attribution feed a reward (ban/spam/unsub are
    STRONG NEGATIVE), the bandit picks the next arm; the loop is what "self-tune via feedback" means.
 
+**Participation copilot (`participate`)**: for communities that shadowban newcomers (e.g. a
+subreddit megathread), a compliant human-in-the-loop path. Invariant: *a human is always the
+publisher and endorser; the tool augments genuine participation but never fakes it and never evades
+a platform's safety systems.* It discovers threads the operator's real expertise fits (read-only:
+official OAuth or `site:reddit.com` search, never scraping), drafts a genuine reply grounded in
+that expertise (draft-only; warming = pure help, zero link; graduated = 90/10 with a "Full
+disclosure" line), tracks a give-before-ask (9:1) ledger + verifiable graduation criteria, and
+attributes the operator's own hand-posted contributions. NO egress path exists (mirrors
+ManualPrepProvider). Deliberately drops the anti-detection warmup/fingerprint/proxy machinery; the
+only pacing is courtesy, never classifier evasion. `reference/participation.md` for the full model.
+
 ## CLI
 
 ```
@@ -52,6 +63,11 @@ python scripts/cli.py channels list              # registered channels + which h
 python scripts/cli.py apply                       # secrets -> active config (delegates; never echoes)
 python scripts/cli.py plan --campaign <C>         # content calendar -> schedule-reminder
 python scripts/cli.py run  --campaign <C> --once  # gated dispatch (DRY-RUN by default)
+python scripts/cli.py prep --campaign <C> [--channel X]   # manual-prep: human-postable copy+checklist
+python scripts/cli.py participate discover --sub <S>      # participation copilot (human-in-the-loop):
+python scripts/cli.py participate draft --title .. --body ..  #   surface expertise-fit threads, draft a
+python scripts/cli.py participate status --age-days N --karma N  #   genuine reply you post BY HAND,
+python scripts/cli.py participate record --url <permalink>       #   track give-before-ask readiness
 python scripts/cli.py authorize --channel <X>     # the exact per-channel live-unlock steps
 python scripts/cli.py report --funnel | --bandit  # funnel + arm convergence
 python scripts/cli.py doctor                       # health / compliance / dry-run self-check

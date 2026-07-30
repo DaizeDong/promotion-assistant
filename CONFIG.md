@@ -80,7 +80,7 @@ source of truth (no conflicting second bridge).
 ## Switching between configs (hot-swap), E5
 
 A config dir is self-contained (`config.py` reads everything relative to the config root, no
-hardcoded paths). Keep as many product configs as you like and switch by repointing the env var ,
+hardcoded paths). Keep as many product configs as you like and switch by repointing the env var,
 no other change:
 
 ```bash
@@ -94,7 +94,7 @@ report READY.
 
 ## Secrets, Mode B (E6)
 
-The companion config repo is **separate and private**, and `secrets/*` there is **gitignored** ,
+The companion config repo is **separate and private**, and `secrets/*` there is **gitignored**,
 promo OAuth/SMTP creds are high blast-radius and auto-revoked, so they never enter git (the
 market-intel "Mode A" rationale does not apply). Only `*.env.template` + README are committed; back
 real values up out-of-band. Credentials are bridged into the active `~/.claude.json` by the config

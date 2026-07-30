@@ -1,8 +1,15 @@
 # Roadmap
 
-Current: **v0.1.2**
+Current: **v0.1.3**
 
-## v0.1.2 (current)
+## v0.1.3 (current)
+- Discord own-server live transport, previously a deferred gap: `DiscordOwnServerProvider.publish`
+  posts one announce message via the Discord REST API in live mode. Credentials come from the
+  environment, never the repo, and the two-switch fail-closed gate is unchanged. A 429 maps to
+  `throttled` so the caller's AIMD reacts to a real rate limit. Guarded by
+  `tests/test_discord_live.py` (7 cases, network mocked).
+
+## v0.1.2
 - Compliance-matcher evasion hardening: banned-claim/body matching now NFKC-normalizes, strips
   zero-width/format chars, and folds common Cyrillic/Greek homoglyphs; suppression matching folds
   `+tag` aliases + case/unicode; CAN-SPAM fires when a payload is email-like (recipient/channel),

@@ -11,10 +11,10 @@ The copilot augments that participation; it never fabricates it.
 > participation, but never fakes participation and never evades a platform's safety systems.
 
 Concretely this forbids, by construction: autonomous posting/voting (there is **no egress code
-path** — every "publish" returns a draft), fabricated "I use product X" personas, karma farming,
+path**, every "publish" returns a draft), fabricated "I use product X" personas, karma farming,
 multi-account operation, and anti-detection machinery (fingerprint browsers, proxies, warmup curves
-whose only purpose is to survive behavioral classifiers). If participation is genuine — the real
-person, honest content, expertise they actually hold — there is nothing to evade.
+whose only purpose is to survive behavioral classifiers). If participation is genuine, meaning the
+real person, honest content, and expertise they actually hold, there is nothing to evade.
 
 Synthesized from a survey of six participation/warmup/discovery skills: it borrows their *structure*
 (opportunity scoring, typed reply frameworks, give-before-ask ledger, prepared→record attribution)
@@ -34,7 +34,7 @@ posting. It extends `ManualPrepProvider`'s compliance-by-construction (LIVE_TRAN
 
 ## Algorithms
 
-**Opportunity score** (`score_opportunity`): five dimensions —
+**Opportunity score** (`score_opportunity`): five dimensions.
 `expertise_fit` (0.40 weight, load-bearing), `need_intensity` (0.20, intent-weighted:
 recommendation/troubleshooting=1.0), `freshness` (0.15, `1/(1+age_h/24)`), `unanswered`
 (0.15, `1/(1+num_comments/5)`), `community_fit` (0.10). A **red-flag phrase** (rant, drama,
@@ -56,17 +56,17 @@ strikes. All account numbers are three-valued-labeled (Measured/User-provided/Es
 caller.
 
 **Courtesy pacing** (`pacing_ok`): per-day and per-sub caps + a post-removal 7-day per-sub circuit
-breaker. This is etiquette (don't spam, don't over-post), explicitly *not* classifier evasion — no
-inter-post timing jitter tuned to survive detection.
+breaker. This is etiquette (don't spam, don't over-post), explicitly *not* classifier evasion: there
+is no inter-post timing jitter tuned to survive detection.
 
 ## Files
 
-- `scripts/participation.py` — pure functions (scoring, red-flag veto, draft prompt, ledger,
+- `scripts/participation.py`: pure functions (scoring, red-flag veto, draft prompt, ledger,
   readiness, pacing). No network.
-- `scripts/reddit_read.py` — read-only access: `site:reddit.com` query construction, official OAuth
-  token + `fetch_new`, listing→schema parsing. Network calls are injectable (testable).
-- `orchestrate.record_participation(url)` — attribution loop (a `drafted` event → the human's real
-  `sent` permalink).
+- `scripts/reddit_read.py`: read-only access, meaning `site:reddit.com` query construction, official
+  OAuth token + `fetch_new`, listing→schema parsing. Network calls are injectable (testable).
+- `orchestrate.record_participation(url)`: the attribution loop (a `drafted` event → the human's
+  real `sent` permalink).
 
 ## Setup
 

@@ -15,7 +15,7 @@
     "",
     "Enforced by tools/data_boundary.py in .githooks and in CI."
   ],
-  "_audited": "2026-07-13 -- swept for real-run output written back into this repo (every open(...,'a'), json.dump, write_text; every tracked *.jsonl / state / cache / report). This skill's writers all resolve OUTSIDE the repo, or it has no writers. No DATA-class path found. An empty list here is a CONCLUSION, not a default: it distinguishes 'audited, nothing to declare' from 'nobody has looked'.",
+  "_audited": "2026-07-31 RE-AUDIT (supersedes the 2026-07-13 sweep, which recorded an empty declaration for this repo). The earlier sweep asked only whether shipped code appends to a TRACKED file here. That question is too narrow: it clears every path that is gitignored, and .gitignore is advisory -- `git add -f` walks straight through it, which is the whole reason declarations exist. This pass asked instead whether shipped code or shipped docs can put REAL-RUN OUTPUT at a repo-relative path at all. ANSWER: it produces real-run output -- events.jsonl (the six-layer funnel), dry-run.jsonl, bandit-state.json, throttle-state.json, the consent ledger -- but never at a repo-relative path. Every writer routes through config.py's Config.metrics_dir() and compliance_dir(), which hang off find_config_dir(); that resolver probes $PROMO_CONFIG_DIR, the two $PROMOTION_ASSISTANT_CONFIG aliases and two dotfile paths, and RAISES ConfigError when none exists. A resolver that raises instead of falling back is the write-side hard-fail rule working as intended. Nothing to declare in this repo.",
   "data": [],
   "data_sealed": [],
   "fixture": [],

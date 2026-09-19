@@ -204,12 +204,18 @@ def cmd_participate(args):
         draft_text = None
         try:
             import llmcall
-            res = llmcall.call(prompt, mode="agent")
-            draft_text = getattr(res, "text", None) or str(res)
+            res = llmcall.call(prompt, mode="agent", selection=llmcall.ModelSelection(),
+                               requirements=llmcall.ExecutionRequirements(
+                                   access="read_only", tool_network="forbidden",
+                                   tool_allowlist=(), replay="never_after_start"))
+            if not res or res.error or not res.text.strip():
+                print("Draft unavailable: %s" % (res.error or "empty model output"))
+                return 1
+            draft_text = res.text
         except Exception as e:
             print("(llmcall unavailable: %s -- here is the prompt to run manually)\n" % str(e)[:80])
             print(prompt)
-            return 0
+            return 1
         # over-claim guard on the generated draft
         from scripts import compliance as _c
         ok, reasons = _c.check({"body": draft_text, "transport": "post"},

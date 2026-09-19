@@ -32,15 +32,32 @@ def _egress_cmd():
     return None
 
 
-def alert(message: str, *, dry_run=False) -> dict:
+def _notification_client():
+    import importlib.util
+    from pathlib import Path
+    path = Path(os.environ.get('SCHEDULE_NOTIFICATION_CLIENT') or
+                Path.home() / '.claude/skills/schedule-reminder/scripts/notification_client.py')
+    if not path.is_file():
+        raise RuntimeError('shared notification client missing; bind SCHEDULE_NOTIFICATION_CLIENT')
+    spec = importlib.util.spec_from_file_location('_owner_notification_client', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def alert(message: str, *, dry_run=False, run_id=None, condition='anomaly',
+          retry_failed=False) -> dict:
+    if dry_run or os.environ.get('AGENT_CENTER_RELAY_DRYRUN'):
+        return {'status': 'dry-run', 'message': message}
     cmd = _egress_cmd()
     if not cmd:
-        return {"status": "no-relay", "message": message}
-    if dry_run:
-        return {"status": "dry-run", "message": message}
+        return {'status': 'no-relay', 'message': message}
     try:
-        r = subprocess.run(cmd + [message], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=30)
-        return {"status": "sent" if r.returncode == 0 else "error", "rc": r.returncode}
-    except Exception as e:  # pragma: no cover
-        return {"status": "error", "reason": str(e)[:200]}
+        client = _notification_client()
+        receipt = client.submit('promotion-assistant', run_id, 'alert', condition, 'promotion',
+            message, language='preserve', retry_failed=retry_failed,
+            **client.transport_options(cmd, 'promotion'))
+        return {'status': 'sent' if receipt['state'] == 'sent' else 'error',
+                'rc': 0 if receipt['state'] == 'sent' else 1, 'receipt': receipt}
+    except Exception as exc:
+        return {'status': 'error', 'reason': type(exc).__name__}

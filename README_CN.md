@@ -63,7 +63,8 @@ python scripts/cli.py report --funnel                 # 六层漏斗
 
 - **挂载(发现顺序):** `$PROMO_CONFIG_DIR`(主)→ `$PROMOTION_ASSISTANT_CONFIG` →
   `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
-  `~/.config/promotion-assistant-config/`。命中第一个即用;都没有则 fail-closed。
+  `~/.config/promotion-assistant-config/`。显式路径或优先级最高的非空环境变量一旦选定，就必须通过校验，失败不会转用另一个产品。
+  只有没有指定路径和环境变量时才查找家目录。所选目录须属于独立、有提交历史的私有伴生仓，所有 remote 的 fetch/push 目的地都须确认 PRIVATE。
 - **首次配置:**
   ```bash
   cd skills/promotion-assistant
@@ -71,6 +72,8 @@ python scripts/cli.py report --funnel                 # 六层漏斗
   export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # 或给 init 传 --out <dir>
   python scripts/verify_config.py       # doctor:逐项 PASS/FAIL,明确报缺什么
   ```
+- **邮件设置：** helper 须实现完整的 [reviewed-email-v1 协议](skills/promotion-assistant/reference/email-helper-contract.md)，并在渠道中明确配置。
+  仅有旧 helper 文件或 message ID 不足以确认发件人和完整正文；安装环境仍需单独核验。
 - **切换 config(即插即用):** 把环境变量指向另一个 config 目录即可, config 自包含,无需任何别的改动:
   `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`。
 - **密钥:** Mode B, `secrets/*` 已 gitignore,永不入库;请用库外备份。凭证经 config 仓自带的
@@ -82,14 +85,16 @@ python scripts/cli.py report --funnel                 # 六层漏斗
 
 ## 示例输出
 
-dry-run 下 `run --once` 打印形如 `{"status":"ok","dispatch":{"status":"simulated",...},"arm":"armA"}`，
-并追加一条 `simulated` 事件 + 一行 `dry-run.jsonl`, 在逐渠道 live 授权前，零网络外发。
+dry-run 下 `run --once` 返回 `run_id`、`status`、`counts` 和完整的 `items`，逐个列出目的地、
+完整文案、同意与退订状态、回执和能否重试。模拟结果标为 `simulated`，预览和事件写入私有伴生仓，
+不会调用渠道发送接口。私有存储和恢复运行的用法见 [CONFIG.md](CONFIG.md)。
 
 ## 局限
 
 - 开 live 是**逐渠道、需显式授权、且不在构建/测试范围内**(本阶段只 dry-run)。
-- 多个渠道作为 **deferred-gap** 交付(Mastodon/Bluesky/Reddit/X/PH/HN), 是登记而非静默丢弃；当前
-  live 传输为邮件(经 `send-gmail.ps1`)与自有服 Discord，两者仍需逐渠道授权。
+- 邮件、自有服 Discord、Mastodon 和 Bluesky 已有自动发送接口；已登记的人工渠道使用 `prep`，
+  X 和未知平台暂不支持自动发送。自动发送仍需逐渠道授权，并取得匹配的远端回执。
+  `channels list --json` 分别列出实现情况、本地配置和实发证据；合成测试不算实发证据。
 - 平台 ToS 灰区无法消除；节流/拟人层只降低、不消除封号概率。
 
 ## 语言

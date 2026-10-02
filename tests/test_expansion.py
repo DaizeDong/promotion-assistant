@@ -63,7 +63,7 @@ def test_mastodon_live_without_creds_errors_cleanly(monkeypatch):
     monkeypatch.delenv("PROMO_MASTODON_INSTANCE", raising=False)
     monkeypatch.delenv("PROMO_MASTODON_TOKEN", raising=False)
     r = providers.MastodonProvider().publish({"body": "x"}, live=True)
-    assert r["status"] == "error" and "PROMO_MASTODON" in r["reason"]
+    assert r["status"] == "not_applied" and "PROMO_MASTODON" in r["reason"]
 
 
 def test_bluesky_non_live_is_not_live():
@@ -75,7 +75,7 @@ def test_bluesky_live_without_creds_errors_cleanly(monkeypatch):
     monkeypatch.delenv("PROMO_BLUESKY_HANDLE", raising=False)
     monkeypatch.delenv("PROMO_BLUESKY_APP_PASSWORD", raising=False)
     r = providers.BlueskyProvider().publish({"body": "x"}, live=True)
-    assert r["status"] == "error" and "PROMO_BLUESKY" in r["reason"]
+    assert r["status"] == "not_applied" and "PROMO_BLUESKY" in r["reason"]
 
 
 def test_mastodon_bluesky_are_live_transport_in_registry():

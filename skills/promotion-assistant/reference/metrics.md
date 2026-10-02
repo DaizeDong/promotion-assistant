@@ -26,3 +26,14 @@ Every bandit decision stores `propensity_p` + `policy_version` (off-policy de-bi
 E8). A per-account daily shadowban probe (search/reply/hashtag visibility + impressions z-score)
 writes a `shadowban` event that feeds a strong negative reward and flips the account to
 cooldown/engage-only mode.
+
+
+Production learning stores observation credit receipts with the posterior. A completed resume
+without new linked event IDs leaves the posterior unchanged; delayed evidence is credited once.
+Legacy posteriors establish a conservative receipt baseline before accepting later observations.
+Censored evidence is revisited only with new linked evidence, not merely because time passed.
+
+The sequential A/B test exposes max_one_sided_wealth as a diagnostic crossing statistic. The
+legacy e_value name is only a deprecated alias and is not a valid two-sided e-value. Its anytime
+two-sided p-value is min(1, 2 / max_one_sided_wealth), consistent with rejection at 2 / alpha.
+Validity requires paired differences with conditional mean zero given prior observations.

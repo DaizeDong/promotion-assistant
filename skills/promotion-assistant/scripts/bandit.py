@@ -16,11 +16,44 @@ acceptance gate (E2/E3) can measure regret + drift recovery.
 """
 from __future__ import annotations
 
+import copy
 import json
+import math
 import random
 from pathlib import Path
+from . import private_storage
 
 POLICY_VERSION = "ts-discounted-1"
+
+
+def decode_state(payload):
+    if payload is None:
+        return {"policy_version": POLICY_VERSION, "arms": {}, "observation_credits": {}}
+    try:
+        document = json.loads(payload)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("malformed bandit state; preserve it for explicit recovery") from exc
+    if not isinstance(document, dict) or not isinstance(document.get("arms"), dict):
+        raise ValueError("bandit state must contain an arms object")
+    for key, arm in document["arms"].items():
+        if not isinstance(key, str) or not isinstance(arm, dict) or arm.get("arm_id") != key:
+            raise ValueError("invalid bandit arm identity")
+        if any(type(arm.get(field)) not in (int, float) or not math.isfinite(arm[field])
+               or arm[field] <= 0 for field in ("alpha", "beta")):
+            raise ValueError("invalid bandit posterior")
+        if type(arm.get("n_pulls")) is not int or arm["n_pulls"] < 0:
+            raise ValueError("invalid bandit observation count")
+    credits = document.get("observation_credits", {})
+    if not isinstance(credits, dict):
+        raise ValueError("invalid observation credit ledger")
+    for key, credit in credits.items():
+        if (not isinstance(key, str) or not key or not isinstance(credit, dict)
+                or not isinstance(credit.get("binding"), str) or len(credit["binding"]) != 64
+                or credit.get("status") not in {"credited", "censored", "legacy-observed"}
+                or not isinstance(credit.get("decision_id"), str)
+                or not isinstance(credit.get("arm_id"), str)):
+            raise ValueError("invalid observation credit receipt")
+    return document
 
 
 def _gamma_sample(rng, k, theta=1.0):
@@ -56,10 +89,8 @@ class Bandit:
         self.prior = prior
         self.arms = {}
         if state_path and state_path.is_file():
-            try:
-                self.arms = json.loads(state_path.read_text(encoding="utf-8")).get("arms", {})
-            except Exception:
-                self.arms = {}
+            self.arms = decode_state(private_storage.read_text(state_path))["arms"]
+        self._loaded_arms = copy.deepcopy(self.arms)
 
     def _arm(self, arm_id):
         a = self.arms.get(arm_id)
@@ -108,9 +139,14 @@ class Bandit:
     def save(self):
         if not self.path:
             return
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps({"policy_version": POLICY_VERSION, "arms": self.arms},
-                                        indent=2, ensure_ascii=False), encoding="utf-8")
+        def merge(previous):
+            document = decode_state(previous)
+            if document['arms'] != self._loaded_arms:
+                raise ValueError('bandit state changed; use atomic observation crediting')
+            document.update(policy_version=POLICY_VERSION, arms=self.arms)
+            return json.dumps(document, indent=2, sort_keys=True)+'\n', None
+        private_storage.update_text(self.path, merge)
+        self._loaded_arms = copy.deepcopy(self.arms)
 
     def best_arm(self):
         if not self.arms:

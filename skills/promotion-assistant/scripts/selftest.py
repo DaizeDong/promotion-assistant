@@ -12,7 +12,9 @@ import os
 import random
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
@@ -39,6 +41,7 @@ def rec(i, name, ok, detail=""):
 
 
 def _mk_config(tmp, send_mode="dry_run"):
+    fixture = json.loads((_HERE.parent/'fixtures/promotion.json').read_text())
     root = Path(tmp)
     (root / "channels" / "reddit-rp").mkdir(parents=True, exist_ok=True)
     (root / "copy").mkdir(parents=True, exist_ok=True)
@@ -51,7 +54,7 @@ def _mk_config(tmp, send_mode="dry_run"):
     }, ensure_ascii=False), encoding="utf-8")
     (root / "registry.json").write_text(json.dumps({"channels": [
         {"slug": "reddit-rp", "platform": "reddit", "transport": "post",
-         "account_handle": "acct1", "warmup_state": "normal"}
+         "account_handle": "acct1", "warmup_state": "normal", **fixture['broadcast']}
     ]}, ensure_ascii=False), encoding="utf-8")
     (root / "channels" / "reddit-rp" / "policy.json").write_text(json.dumps({
         "day_cap": 50, "min_gap_sec": 0
@@ -134,9 +137,9 @@ def e4():
         thr = TH.Throttle(Path(t) / "s.json", clock=lambda: 1000.0, rng=random.Random(1))
         pol = {"day_cap": 5, "min_gap_sec": 0, "backoff": {"factor": 0.5, "cooldown_h": 24}}
         oks = sum(1 for _ in range(12) if thr.allow("acct", "reddit", "post", pol)[0])
-        cap_before = thr.state["acct|reddit|post"]["cap"]
+        cap_before = thr.state[thr._key("acct", "reddit", "post")]["cap"]
         thr.on_throttle_signal("acct", "reddit", "post", pol)
-        cap_after = thr.state["acct|reddit|post"]["cap"]
+        cap_after = thr.state[thr._key("acct", "reddit", "post")]["cap"]
         in_cd = thr.allow("acct", "reddit", "post", pol)
         ok = (oks == 5 and abs(cap_after - cap_before * 0.5) < 1e-9 and in_cd[0] is False)
         rec("E4", "token-bucket cap honored + 429 halves cap + cooldown",
@@ -182,8 +185,38 @@ def e6():
 
 
 # ---- E7 dry-run engine + E8 propensity + E10 schema (shared run) ----
+@contextmanager
+def _synthetic_private_metadata(root):
+    """Scope the selftest's repository evidence to its temporary synthetic companion."""
+    from scripts import private_storage
+    root = Path(root).resolve()
+    fixture = json.loads((_HERE.parent/'fixtures/promotion.json').read_text())
+
+    def repository(existing):
+        if not existing.is_relative_to(root):
+            raise ValueError('selftest attempted to leave its temporary companion')
+        return root
+
+    def metadata(argv):
+        if argv[0] == 'git':
+            if argv[-1:] == ['remote']:
+                return 'origin'
+            if argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
+                return '1'*40
+            if (('get-url' in argv and '--all' in argv and argv[-1] == 'origin')
+                    or argv[-3:] == ['remote', 'get-url', 'origin']):
+                return 'https://github.com/example/synthetic-promotion-config.git'
+            raise AssertionError('unexpected Git metadata query')
+        if argv[0] == 'gh' and argv[1:4] == ['repo', 'view', 'example/synthetic-promotion-config']:
+            return '{"visibility":"PRIVATE","nameWithOwner":"example/synthetic-promotion-config"}'
+        raise AssertionError('unexpected metadata operation')
+
+    with patch.object(private_storage, 'repository', repository), patch.object(private_storage, '_run', metadata):
+        yield
+
+
 def e7_e8_e10():
-    with tempfile.TemporaryDirectory() as t:
+    with tempfile.TemporaryDirectory() as t, _synthetic_private_metadata(t):
         cfg = _mk_config(t, send_mode="dry_run")
         env = {}  # no PROMO_LIVE_AUTHORIZED_* -> must simulate
         res = ORCH.run_once(cfg, "camp", env=env, rng=random.Random(2))

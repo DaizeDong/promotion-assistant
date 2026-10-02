@@ -240,7 +240,7 @@ def ledger_balance(entries) -> dict:
     asks = sum(1 for e in entries if e.get("type") == "ask")
     ratio = (gives / asks) if asks else float("inf")
     return {"gives": gives, "asks": asks, "ratio": ratio,
-            "holds_9to1": ratio >= 9.0, "next_ask_ok": ratio >= 9.0}
+            "holds_9to1": ratio >= 9.0, "next_ask_ok": gives >= 9 * (asks + 1)}
 
 
 def readiness(account: dict, ledger_entries, *, min_age_days=14, min_karma=50,
@@ -307,3 +307,51 @@ def pacing_ok(recent_actions, *, sub=None, max_per_day=5, max_per_sub_day=2,
             return {"ok": False, "reason": "already %d in r/%s today (per-sub cap %d)"
                     % (sub_count, sub, max_per_sub_day)}
     return {"ok": True, "reason": "within courteous limits"}
+
+
+def canonical_permalink(url):
+    """Normalize tracking suffixes while retaining the actual HTTPS publication location."""
+    from urllib.parse import unquote_plus, urlsplit, urlunsplit
+    if not isinstance(url, str) or not url or any(char.isspace() for char in url):
+        raise ValueError('a publication permalink is required')
+    parsed = urlsplit(url)
+    if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or '\\' in url:
+        raise ValueError('permalink must be an absolute HTTPS URL without credentials')
+    # Preserve unknown query fields verbatim: they may identify or authenticate the publication.
+    query = '&'.join(part for part in parsed.query.split('&')
+                     if not unquote_plus(part.partition('=')[0]).lower().startswith('utm_'))
+    return urlunsplit(('https', parsed.netloc.lower(), parsed.path.rstrip('/') or '/', query, ''))
+
+
+def thread_identity(url):
+    """Reddit title slugs and comment paths do not change the source thread identity."""
+    from urllib.parse import urlsplit
+    canonical = canonical_permalink(url)
+    parsed = urlsplit(canonical)
+    parts = parsed.path.strip('/').split('/')
+    if parsed.hostname in {'reddit.com', 'www.reddit.com', 'old.reddit.com', 'np.reddit.com'}:
+        try:
+            index = parts.index('comments')
+            identifier = parts[index+1]
+        except (ValueError, IndexError):
+            raise ValueError('Reddit thread URL must identify a comments thread')
+        if not identifier.isalnum():
+            raise ValueError('invalid Reddit thread identity')
+        return 'https://www.reddit.com/comments/'+identifier.lower()
+    return canonical
+
+
+def confirmed_entries(rows):
+    """Only confirmed human publications with an explicit final give/ask count toward readiness."""
+    entries = {}
+    for row in rows:
+        if (row.get('channel') != 'reddit-participation' or row.get('event_type') != 'sent'
+                or row.get('actuator') != 'human' or row.get('live') is not True
+                or row.get('participation_type') not in {'give', 'ask'}):
+            continue
+        url = canonical_permalink(row.get('post_url'))
+        entry = {'type': row['participation_type'], 'url': url, 'ts': row.get('ts')}
+        if url in entries and entries[url]['type'] != entry['type']:
+            raise ValueError('one participation permalink has conflicting give/ask classifications')
+        entries.setdefault(url, entry)
+    return list(entries.values())

@@ -21,6 +21,7 @@ import pytest
 from scripts import config as CFG
 from scripts import dispatch as D
 from scripts import providers as P
+from scripts import email_contract as EMAIL
 
 _ROOT = Path(__file__).resolve().parents[1]
 
@@ -72,7 +73,8 @@ class _Spy:
 
         class _R:
             returncode = 0
-            stdout = ""
+            stdout = json.dumps({**json.loads(cmd[cmd.index("-RequestJson")+1]),
+                                 **json.loads((_ROOT/'tests/fixtures/promotion.json').read_text())['receipt']})
             stderr = ""
         return _R()
 
@@ -86,12 +88,17 @@ def _wire_email(monkeypatch, tmpdir):
     return spy
 
 
+def _email_payload(**overrides):
+    payload = json.loads((_ROOT/'tests/fixtures/promotion.json').read_text())['email_payload']
+    return {**payload, **overrides}
+
+
 def test_f2_dash_leading_recipient_refused_without_spawning(monkeypatch):
     with tempfile.TemporaryDirectory() as t:
         spy = _wire_email(monkeypatch, t)
         prov = P.EmailProvider()
-        r = prov.publish({"recipient": "--Command", "subject": "s", "body": "b"}, live=True)
-        assert r["status"] == "error"
+        r = prov.publish(_email_payload(recipient="--Command"), live=True)
+        assert r["status"] == "not_applied"
         assert spy.calls == [], "must refuse BEFORE spawning powershell"
 
 
@@ -99,8 +106,8 @@ def test_f2_non_email_recipient_refused(monkeypatch):
     with tempfile.TemporaryDirectory() as t:
         spy = _wire_email(monkeypatch, t)
         prov = P.EmailProvider()
-        r = prov.publish({"recipient": "not-an-email", "subject": "s", "body": "b"}, live=True)
-        assert r["status"] == "error"
+        r = prov.publish(_email_payload(recipient="not-an-email"), live=True)
+        assert r["status"] == "not_applied"
         assert spy.calls == []
 
 
@@ -108,10 +115,10 @@ def test_f2_dash_leading_subject_or_body_refused(monkeypatch):
     with tempfile.TemporaryDirectory() as t:
         spy = _wire_email(monkeypatch, t)
         prov = P.EmailProvider()
-        assert prov.publish({"recipient": "a@example.com", "subject": "-Foo", "body": "b"},
-                            live=True)["status"] == "error"
-        assert prov.publish({"recipient": "a@example.com", "subject": "s", "body": "-rm"},
-                            live=True)["status"] == "error"
+        assert prov.publish(_email_payload(subject="-Foo"),
+                            live=True)["status"] == "not_applied"
+        assert prov.publish(_email_payload(body="-rm"),
+                            live=True)["status"] == "not_applied"
         assert spy.calls == []
 
 
@@ -119,11 +126,15 @@ def test_f2_valid_email_still_reaches_live_transport(monkeypatch):
     with tempfile.TemporaryDirectory() as t:
         spy = _wire_email(monkeypatch, t)
         prov = P.EmailProvider()
-        r = prov.publish({"recipient": "user@example.com", "subject": "Hi", "body": "ok"}, live=True)
+        payload = json.loads((_ROOT/'tests/fixtures/promotion.json').read_text())['email_payload']
+        r = prov.publish(payload, live=True)
         assert r["status"] == "sent"
         assert len(spy.calls) == 1, "valid recipient must still invoke the live path"
         cmd = spy.calls[0]
-        assert "-To" in cmd and "user@example.com" in cmd
+        assert "-RequestJson" in cmd
+        transported = json.loads(cmd[cmd.index("-RequestJson")+1])
+        assert transported == EMAIL.request(payload)
+        assert transported["body"] == payload["rendered_body"]
 
 
 # ----------------------------------------------------------------------------- F3

@@ -74,3 +74,17 @@ Register a Reddit "script" app at reddit.com/prefs/apps; put credentials in a **
 `secrets/reddit.env`: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`,
 `REDDIT_PASSWORD`, `REDDIT_USER_AGENT`. Without it, `discover` degrades to emitting search queries
 you run through your own tooling. The copilot never stores or echoes secrets.
+
+
+## Recording the actual contribution
+
+Draft output includes its event ID and normalized source thread. After editing and posting by hand,
+record the final contribution with --thread, --draft-id and --type give|ask. Classification describes
+what the person actually posted; permission to include a product mention does not make a draft an
+ask, and preparing a draft does not create a give.
+
+The recorder validates the explicit draft/thread association, retains the draft's graduation and
+compliance disposition, and deduplicates the actual permalink. A duplicate with a conflicting
+association or give/ask classification fails. Only sent events with a human actuator, confirmed
+publication flag, permalink and explicit final classification enter the readiness ledger.
+Unclassified legacy events remain historical evidence without inflating either count.

@@ -86,7 +86,7 @@ def test_throttle_rampup_ceiling(tmp_path):
     for _ in range(20):
         clock[0] += 2 * 86400.0  # advance two stable days each iteration
         thr.on_stable_period("a", "reddit", "post", pol)
-    cap = thr.state["a|reddit|post"]["cap"]
+    cap = thr.state[thr._key("a", "reddit", "post")]["cap"]
     assert cap <= 10 * 3.0 + 1e-9, cap     # never exceeds the ceiling
     assert cap > 10.0, cap                  # but it did grow
 

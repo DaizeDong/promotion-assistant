@@ -13,8 +13,9 @@ not apply).
   channels/<slug>/policy.json   # day/hour/week caps, min/max gap, warmup_curve, backoff(AIMD)
   copy/<campaign>.json    # arms: {id, channel, segment, hook, body, cta, utm, status}
   audiences.json          # segment definitions
-  compliance/consent-ledger.jsonl   # [gitignored] EU lawful-basis records
-  metrics/                # [gitignored] events.jsonl, bandit-state.json, suppression.csv, dry-run.jsonl, throttle-state.json
+  compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
+  metrics/                # versioned PRIVATE events, previews, suppression and runtime state
+  metrics/runs/<id>.json   # versioned PRIVATE frozen intent and per-item receipts
   secrets/                # [gitignored] <slug>.env (only *.template + README committed)
   scripts/apply.py        # secrets -> active ~/.claude.json (never echoes values); forked from companion config kit
   runbooks/               # new-machine.md, live-authorize.md, ban-recovery.md
@@ -25,6 +26,11 @@ Key fields the engine reads (`scripts/config.py`):
 - `product.json.aff_base`, conversion anchor; per-channel ref code = channel-level attribution.
 - `product.json.banned_claims` / `compliance.physical_address` / `compliance.unsubscribe_url`.
 - `registry.json.channels[].{slug,platform,transport,account_handle,warmup_state}`.
+- Owned Mastodon/Bluesky channels also require `audience_mode: "owned_broadcast"` and an
+  account-specific `destination`; both identity fields are frozen with the reviewed run.
+  Mastodon binds the configured instance, authenticated account and returned post account.
+  Bluesky binds the configured handle, authenticated session and returned record repository.
+  See [the identity contract](../../../CONFIG.md#review-delivery-and-recovery) for accepted formats.
 - `channels/<slug>/policy.json`, throttle policy (hot-swappable, never hardcoded in the skill).
 
 `copy`/`audiences` load as `.json`; `.yaml` is also accepted when PyYAML is installed (the loader

@@ -38,9 +38,10 @@ def listing(cfg) -> dict:
                                     policy={"banned_claims": cfg.banned_claims},
                                     suppression=set(), consent={})
     if not ok:
-        desc = "%s community server -- an OpenAI-compatible AI gateway for RP frontends. Free models " \
-               "to start; setup help in the channels." % product  # fall back to a plain, guard-safe desc
+        return {"status": "blocked", "reasons": reasons, "description": None}
     return {
+        "status": "ready",
+        "reasons": [],
         "name": "%s" % product,
         "tags": ["openai", "chatbot", "api", "roleplay", "ai"],
         "description": desc,

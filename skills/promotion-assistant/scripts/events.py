@@ -15,6 +15,7 @@ import json
 import time
 import uuid
 from pathlib import Path
+from . import private_storage
 
 EVENT_TYPES = {
     # positive funnel
@@ -32,6 +33,8 @@ EVENT_TYPES = {
     # produced a genuine-help draft for a human to edit and post; the human's actual contribution is
     # later logged via `participate record`, closing the attribution loop with their real permalink.
     "drafted",
+    # Delivery outcomes without a confirmed remote receipt never enter the sent funnel.
+    "uncertain", "failed", "deferred", "manual-prep",
 }
 
 REQUIRED = ("event_id", "ts", "channel", "event_type")
@@ -75,28 +78,64 @@ def validate_event(ev: dict) -> list:
         errs.append("bad event_type: %r" % ev.get("event_type"))
     if not isinstance(ev.get("utm", {}), dict):
         errs.append("utm must be an object")
-    # propensity completeness for decision-bearing events
+    # Human choices have no sampling probability; prepared bandit choices retain theirs.
     if ev.get("arm_id") and ev.get("event_type") in ("sent", "simulated"):
-        if ev.get("propensity_p") is None or ev.get("policy_version") is None:
+        human = ev.get("decision_origin") == "human" and ev.get("actuator") == "human"
+        if human:
+            if ev.get("propensity_p") is not None or ev.get("policy_version") is not None:
+                errs.append("human choice must not claim a stochastic propensity")
+        elif ev.get("propensity_p") is None or ev.get("policy_version") is None:
             errs.append("decision event missing propensity_p/policy_version")
     return errs
 
 
+def _rows(payload):
+    rows = []
+    for line in (payload or '').splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if not isinstance(row, dict):
+            raise ValueError('event store contains a non-object row')
+        rows.append(row)
+    return rows
+
+
 def append(path: Path, ev: dict) -> None:
+    append_once(path, ev)
+
+
+def append_once(path: Path, ev: dict, *, key=None):
+    """Atomically append, or return a matching prior manual-record identity."""
     errs = validate_event(ev)
     if errs:
         raise ValueError("event schema violation: %s" % "; ".join(errs))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8", newline="\n") as f:
-        f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    if key is not None and (not isinstance(key, str) or not key):
+        raise ValueError('event idempotency key must be a nonempty string')
+    event = dict(ev)
+    if key is not None:
+        event['record_key'] = key
+
+    def merge(previous):
+        rows = _rows(previous)
+        if key is not None:
+            matches = [row for row in rows if row.get('record_key') == key]
+            if len(matches) > 1:
+                raise ValueError('event store contains duplicate record identities')
+            if matches:
+                fields = ('channel', 'platform', 'account', 'event_type', 'post_url', 'thread', 'linked_draft',
+                          'participation_type', 'arm_id', 'decision_id', 'decision_origin',
+                          'propensity_p', 'policy_version', 'actuator')
+                if any(matches[0].get(field) != event.get(field) for field in fields):
+                    raise ValueError('event identity is already linked to a different decision or publication')
+                return previous, matches[0]
+        prefix = previous or ''
+        if prefix and not prefix.endswith('\n'):
+            prefix += '\n'
+        return prefix+json.dumps(event, ensure_ascii=False)+'\n', event
+
+    return private_storage.update_text(path, merge)
 
 
 def read(path: Path):
-    if not path.is_file():
-        return []
-    out = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            out.append(json.loads(line))
-    return out
+    return _rows(private_storage.read_text(path))

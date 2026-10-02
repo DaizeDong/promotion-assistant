@@ -6,6 +6,8 @@ zero-width chars, Cyrillic/Greek homoglyphs, `+tag` suppression aliases, and CAN
 skipped by mislabeling an email's transport. Each must now be caught.
 """
 import os
+import json
+from pathlib import Path
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +25,7 @@ def _clean_email(**over):
         "channel": "email", "transport": "smtp", "recipient": "ok@example.com",
         "from_addr": "me@example.com", "unsubscribe": "https://x/unsub",
         "subject": "Hello there", "body": "a normal message",
+        "recipient_country": json.loads((Path(HERE)/'fixtures/promotion.json').read_text())['audiences']['segments']['sample'][0]['recipient_country'],
     }
     p.update(over)
     return p

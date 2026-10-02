@@ -63,15 +63,14 @@ def cmd_init(args):
 
 
 def cmd_channels(args):
-    cfg = _load(args)
-    reg = _providers.build_registry()
-    print("%-18s %-12s %-10s %s" % ("slug", "platform", "live?", "note"))
-    for c in cfg.channels():
-        plat = c.get("platform", c.get("slug"))
-        prov = reg.get(plat, _providers.get(plat))
-        live = "yes" if prov.LIVE_TRANSPORT else "DEFERRED"
-        print("%-18s %-12s %-10s %s" % (c.get("slug"), plat, live,
-              "" if prov.LIVE_TRANSPORT else prov.deferred_reason))
+    from scripts.capabilities import channels
+    rows = channels(_load(args))
+    if getattr(args, 'json', False):
+        print(json.dumps({'channels': rows}, ensure_ascii=False))
+    else:
+        print('slug                 platform     mode          implemented configured live_proven')
+        for row in rows:
+            print('{slug:20} {platform:12} {mode:13} {implemented!s:11} {configured!s:10} {live_proven}'.format(**row))
     return 0
 
 
@@ -91,18 +90,24 @@ def cmd_plan(args):
     cfg = _load(args)
     res = _orch.plan(cfg, args.campaign, bridge=ScheduleBridge(), days=args.days)
     print(json.dumps(res, ensure_ascii=False, indent=2))
-    return 0
+    return 0 if res.get('status') == 'complete' else 1
 
 
 def cmd_run(args):
     cfg = _load(args)
     cw = int(args.conversion_window_days) * 86400 if args.conversion_window_days else None
     n = 1 if args.once else int(args.cycles)
+    failed = False
+    if n != 1 and (getattr(args, 'run_id', None) or getattr(args, 'resume', False)):
+        print(json.dumps({'status': 'blocked', 'reason': 'explicit run identity requires one cycle', 'counts': {}, 'items': []}))
+        return 1
     for _ in range(n):
         res = _orch.run_once(cfg, args.campaign, env=os.environ, conversion_window_s=cw,
-                             channel=getattr(args, "channel", None))
+                             channel=getattr(args, "channel", None),
+                             run_id=getattr(args, 'run_id', None), resume=getattr(args, 'resume', False))
         print(json.dumps(res, ensure_ascii=False))
-    return 0
+        failed = failed or res.get('status') not in {'complete', 'simulated'}
+    return int(failed)
 
 
 def cmd_prep(args):
@@ -133,7 +138,8 @@ def cmd_record_post(args):
     """Close the loop after a human posted a prepped item: writes a real 'sent' event tying the post
     URL to the arm (attribution + bandit update on a later conversion)."""
     cfg = _load(args)
-    res = _orch.record_post(cfg, args.channel, args.url, arm_id=args.arm_id, campaign=args.campaign)
+    res = _orch.record_post(cfg, args.channel, args.url, arm_id=args.arm_id, campaign=args.campaign,
+                            decision_id=getattr(args, 'decision_id', None))
     print(json.dumps(res, ensure_ascii=False))
     return 0 if res.get("status") == "recorded" else 1
 
@@ -195,6 +201,11 @@ def cmd_participate(args):
     if sub == "draft":
         # Build a genuine-help draft grounded in the person's real expertise. Draft-only.
         from scripts import participation as _pp
+        try:
+            thread = _pp.thread_identity(args.url)
+        except ValueError as exc:
+            print("invalid draft source --url: %s" % exc, file=sys.stderr)
+            return 2
         graduated = bool(args.graduated)
         product = cfg.product.get("product") or cfg.product.get("name") or "the product"
         aff = cfg.aff_base + (args.aff_code or "reddit_participation")
@@ -220,7 +231,8 @@ def cmd_participate(args):
                                 account="self", value=0.0,
                                 utm={"source": "reddit", "medium": "comment",
                                      "content": args.aff_code or "reddit_participation"},
-                                graduated=graduated)
+                                graduated=graduated, thread=thread,
+                                compliance_ok=ok, compliance_reasons=reasons)
         _events.append(cfg.metrics_dir() / "events.jsonl", ev)
         print("=" * 66)
         print("DRAFT REPLY  (edit in your own voice, then post BY HAND)")
@@ -231,21 +243,15 @@ def cmd_participate(args):
         print("\n" + (draft_text or "").strip() + "\n")
         print("-" * 66)
         print("After you post it yourself, close the loop:")
-        print("  promotion-assistant participate record --url <your-comment-permalink>")
+        print("  promotion-assistant participate record --url <your-comment-permalink> "
+              "--thread %s --draft-id %s --type give|ask" % (args.url, ev["event_id"]))
         return 0
 
     if sub == "status":
         # Readiness dashboard: give-before-ask ledger + account standing + graduation criteria.
         from scripts import participation as _pp
         evs = _events.read(cfg.metrics_dir() / "events.jsonl")
-        parts = [e for e in evs if e.get("channel") == "reddit-participation"]
-        # ledger: 'drafted'/'sent' non-promo = give; anything carrying an aff link intent = ask.
-        entries = []
-        for e in parts:
-            if e.get("event_type") in ("drafted", "sent"):
-                is_ask = bool((e.get("utm", {}) or {}).get("content")) and e.get("graduated")
-                entries.append({"type": "ask" if is_ask else "give",
-                                "url": e.get("post_url"), "ts": e.get("ts")})
+        entries = _pp.confirmed_entries(evs)
         account = {
             "age_days": args.age_days, "karma": args.karma,
             "sub_gives": sum(1 for x in entries if x["type"] == "give" and x.get("url")),
@@ -269,7 +275,8 @@ def cmd_participate(args):
         return 0
 
     if sub == "record":
-        res = _orch.record_participation(cfg, args.url, thread=args.thread)
+        res = _orch.record_participation(cfg, args.url, thread=args.thread,
+                                         draft_id=args.draft_id, participation_type=args.participation_type)
         print(json.dumps(res, ensure_ascii=False))
         return 0 if res.get("status") == "recorded" else 1
 
@@ -322,6 +329,9 @@ def cmd_growth(args):
     from scripts import growth as _growth
     if args.what == "listing":
         res = _growth.listing(cfg)
+        if res["status"] == "blocked":
+            print("Listing blocked: "+"; ".join(res["reasons"]))
+            return 1
         print("### Discord server listing (submit to DISBOARD / top.gg / Discadia)\n")
         print("Name: %s" % res["name"])
         print("Tags: %s" % ", ".join(res["tags"]))
@@ -368,17 +378,19 @@ def cmd_report(args):
 
 
 def cmd_doctor(args):
-    cfg = _load(args)
-    print("config root  :", cfg.root)
-    print("send_mode    :", cfg.send_mode, "(default dry_run = safe)")
-    print("schedule base:", "OK" if ScheduleBridge().available() else "MISSING")
-    notifier = Path(os.path.expanduser(os.environ.get("PROMO_NOTIFIER_PY", "~/.local/notifier.py")))
-    send_gmail = Path(os.path.expanduser(os.environ.get("PROMO_SEND_GMAIL", "~/.local/send-gmail.ps1")))
-    print("relay        :", "OK" if notifier.is_file() else "MISSING")
-    print("send-gmail   :", "OK" if send_gmail.is_file() else "MISSING")
-    dry = cfg.metrics_dir() / "dry-run.jsonl"
-    print("dry-run log  :", dry, "(exists)" if dry.is_file() else "(none yet)")
-    return 0
+    from scripts.capabilities import doctor
+    try:
+        result = doctor(_load(args), channel=getattr(args, 'channel', None))
+    except _config.ConfigError as exc:
+        result = {'status': 'not_ready', 'checks': [{'name': 'selected config and PRIVATE DATA boundary',
+                  'ok': False, 'reason': str(exc)}], 'live_proven': 'not_run'}
+    if getattr(args, 'json', False):
+        print(json.dumps(result, ensure_ascii=False))
+    else:
+        print(result['status'])
+        for check in result['checks']:
+            print(('PASS ' if check['ok'] else 'FAIL ')+check['name'])
+    return int(result['status'] != 'ready')
 
 
 def main(argv=None):
@@ -386,15 +398,15 @@ def main(argv=None):
     p.add_argument("--config", help="path to product config repo (else $PROMO_CONFIG_DIR)")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init").set_defaults(fn=cmd_init)
-    sc = sub.add_parser("channels"); sc.add_argument("what", nargs="?", default="list"); sc.set_defaults(fn=cmd_channels)
+    sc = sub.add_parser("channels"); sc.add_argument("what", nargs="?", default="list"); sc.add_argument("--json", action="store_true"); sc.set_defaults(fn=cmd_channels)
     sa = sub.add_parser("apply"); sa.add_argument("--dry-run", action="store_true"); sa.set_defaults(fn=cmd_apply)
     sp = sub.add_parser("plan"); sp.add_argument("--campaign", required=True); sp.add_argument("--days", type=int, default=7); sp.set_defaults(fn=cmd_plan)
-    sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.add_argument("--channel", help="restrict the bandit arm pool to one channel (per-channel go-live)"); sr.set_defaults(fn=cmd_run)
+    sr = sub.add_parser("run"); sr.add_argument("--campaign", required=True); sr.add_argument("--once", action="store_true"); sr.add_argument("--cycles", default=1); sr.add_argument("--conversion-window-days", default=0); sr.add_argument("--channel", help="restrict the bandit arm pool to one channel (per-channel go-live)"); sr.add_argument("--run-id"); sr.add_argument("--resume", action="store_true"); sr.set_defaults(fn=cmd_run)
     sco = sub.add_parser("content"); sco.add_argument("what", nargs="?", default="guides", choices=["guides", "card"]); sco.add_argument("--frontend", choices=["janitorai", "sillytavern", "risu", "agnai"]); sco.add_argument("--aff-code", dest="aff_code"); sco.set_defaults(fn=cmd_content)
     sref = sub.add_parser("refer"); sref.add_argument("--handle", required=True); sref.add_argument("--reward"); sref.set_defaults(fn=cmd_refer)
     sg = sub.add_parser("growth"); sg.add_argument("what", nargs="?", default="listing", choices=["listing", "keybot"]); sg.set_defaults(fn=cmd_growth)
     spr = sub.add_parser("prep"); spr.add_argument("--campaign", required=True); spr.add_argument("--channel"); spr.set_defaults(fn=cmd_prep)
-    src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.set_defaults(fn=cmd_record_post)
+    src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.add_argument("--decision-id"); src.set_defaults(fn=cmd_record_post)
     spa = sub.add_parser("participate")
     spa.add_argument("what", choices=["discover", "draft", "status", "record"])
     spa.add_argument("--sub", help="subreddit (discover)")
@@ -410,10 +422,12 @@ def main(argv=None):
     spa.add_argument("--karma", type=int, help="status: account karma")
     spa.add_argument("--strikes", type=int, help="status: mod removals/strikes")
     spa.add_argument("--thread", help="record: source thread url")
+    spa.add_argument("--draft-id", help="record: exact source draft event ID")
+    spa.add_argument("--type", dest="participation_type", choices=["give", "ask"], help="record: final human contribution classification")
     spa.set_defaults(fn=cmd_participate)
     su = sub.add_parser("authorize"); su.add_argument("--channel", required=True); su.set_defaults(fn=cmd_authorize)
     srep = sub.add_parser("report"); srep.add_argument("--funnel", action="store_true"); srep.add_argument("--bandit", action="store_true"); srep.set_defaults(fn=cmd_report)
-    sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
+    sd = sub.add_parser("doctor"); sd.add_argument("--json", action="store_true"); sd.add_argument("--channel"); sd.set_defaults(fn=cmd_doctor)
     args = p.parse_args(argv)
     try:
         return args.fn(args)

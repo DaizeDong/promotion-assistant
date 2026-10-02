@@ -1,0 +1,303 @@
+{
+  "product": {
+    "name": "AcmeCorp",
+    "send_mode": "dry_run",
+    "aff_base": "https://example.com/ref/",
+    "from_addr": "user1@example.com",
+    "compliance": {
+      "physical_address": "AcmeCorp, Synthetic Street, 10001",
+      "unsubscribe_url": "https://example.com/unsubscribe"
+    }
+  },
+  "registry": {
+    "channels": [
+      {
+        "slug": "email",
+        "platform": "email",
+        "transport": "smtp",
+        "account_handle": "synthetic-account",
+        "audience_mode": "addressed",
+        "email_helper_contract": "reviewed-email-v1"
+      }
+    ]
+  },
+  "arms": [
+    {
+      "id": "synthetic-arm",
+      "channel": "email",
+      "segment": "sample",
+      "hook": "Synthetic product announcement",
+      "body": "Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. ",
+      "utm": {
+        "content": "synthetic-arm"
+      }
+    }
+  ],
+  "audiences": {
+    "segments": {
+      "sample": [
+        {
+          "recipient": "user1@example.com",
+          "recipient_country": "US"
+        },
+        {
+          "recipient": "user2@example.com",
+          "recipient_country": "DE"
+        }
+      ]
+    }
+  },
+  "consent": [
+    {
+      "email": "user2@example.com",
+      "status": "active",
+      "lawful_basis": "consent",
+      "ts": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "policy": {
+    "day_cap": 50,
+    "min_gap_sec": 0
+  },
+  "origin": "https://github.com/example/synthetic-promotion-config.git",
+  "run_id": "synthetic-run",
+  "campaign": "synthetic-campaign",
+  "destination": "123456789",
+  "message_id": "synthetic-remote-id",
+  "invalid_runs": [
+    "../escape",
+    "/absolute",
+    "C:drive",
+    "..",
+    "a/b",
+    "a\\b"
+  ],
+  "invalid_ack": [
+    null,
+    {},
+    {
+      "status": "sent"
+    },
+    {
+      "status": "error"
+    }
+  ],
+  "credentials": {
+    "PROMO_DISCORD_BOT_TOKEN": "synthetic-token",
+    "PROMO_DISCORD_ANNOUNCE_CHANNEL_ID": "123456789",
+    "PROMO_MASTODON_INSTANCE": "https://example.com",
+    "PROMO_MASTODON_TOKEN": "synthetic-token",
+    "PROMO_BLUESKY_HANDLE": "synthetic.example.com",
+    "PROMO_BLUESKY_APP_PASSWORD": "synthetic-password"
+  },
+  "session": {
+    "did": "did:plc:synthetic",
+    "handle": "synthetic.example.com",
+    "accessJwt": "synthetic-token"
+  },
+  "owned_accounts": {
+    "bluesky": {
+      "payload": {
+        "account": "synthetic.example.com",
+        "destination": "did:plc:synthetic"
+      },
+      "wrong_environment": {
+        "PROMO_BLUESKY_HANDLE": "other.example.com"
+      },
+      "authenticated": {
+        "did": "did:plc:synthetic",
+        "handle": "synthetic.example.com",
+        "accessJwt": "synthetic-token"
+      },
+      "other_authenticated": {
+        "did": "did:plc:other",
+        "handle": "other.example.com",
+        "accessJwt": "synthetic-token"
+      },
+      "published": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/synthetic"
+      },
+      "other_published": {
+        "uri": "at://did:plc:other/app.bsky.feed.post/synthetic"
+      },
+      "incomplete_published": {
+        "uri": "synthetic-message-id"
+      }
+    },
+    "mastodon": {
+      "payload": {
+        "account": "synthetic@example.com",
+        "destination": "https://example.com/@synthetic"
+      },
+      "wrong_environment": {
+        "PROMO_MASTODON_INSTANCE": "https://other.example.com"
+      },
+      "authenticated": {
+        "id": "synthetic-account-id",
+        "username": "synthetic",
+        "acct": "synthetic",
+        "url": "https://example.com/@synthetic"
+      },
+      "other_authenticated": {
+        "id": "other-account-id",
+        "username": "other",
+        "acct": "other",
+        "url": "https://example.com/@other"
+      },
+      "published": {
+        "id": "synthetic-post-id",
+        "url": "https://example.com/@synthetic/synthetic-post-id",
+        "account": {
+          "id": "synthetic-account-id",
+          "username": "synthetic",
+          "acct": "synthetic",
+          "url": "https://example.com/@synthetic"
+        }
+      },
+      "other_published": {
+        "id": "other-post-id",
+        "url": "https://example.com/@other/other-post-id",
+        "account": {
+          "id": "other-account-id",
+          "username": "other",
+          "acct": "other",
+          "url": "https://example.com/@other"
+        }
+      },
+      "incomplete_published": {
+        "id": "synthetic-post-id"
+      }
+    }
+  },
+  "email_payload": {
+    "platform": "email",
+    "transport": "smtp",
+    "subject": "Synthetic announcement",
+    "body": "Synthetic reviewed copy.",
+    "cta": "https://example.com/ref/synthetic-arm",
+    "recipient": "user1@example.com",
+    "destination": "user1@example.com",
+    "from_addr": "user1@example.com",
+    "physical_address": "AcmeCorp, Synthetic Street, 10001",
+    "unsubscribe": "https://example.com/unsubscribe",
+    "email_helper_contract": "reviewed-email-v1",
+    "idempotency_key": "synthetic-action-key",
+    "rendered_body": "Synthetic reviewed copy.\n\nhttps://example.com/ref/synthetic-arm\n\nAcmeCorp, Synthetic Street, 10001\n\nhttps://example.com/unsubscribe"
+  },
+  "receipt": {
+    "status": "sent",
+    "message_id": "synthetic-remote-id",
+    "evidence_kind": "synthetic"
+  },
+  "broadcast": {
+    "audience_mode": "owned_broadcast",
+    "destination": "synthetic-owned-channel"
+  },
+  "adapter_payload": {
+    "subject": "Synthetic announcement",
+    "body": "Synthetic reviewed copy.",
+    "cta": "https://example.com/ref/synthetic-arm",
+    "recipient": "user1@example.com",
+    "destination": "123456789",
+    "idempotency_key": "synthetic-action-key"
+  },
+  "adapter_responses": [
+    {
+      "remote": {},
+      "confirmed": false
+    },
+    {
+      "remote": {
+        "id": "",
+        "uri": ""
+      },
+      "confirmed": false
+    },
+    {
+      "remote": {
+        "id": "   ",
+        "uri": "   "
+      },
+      "confirmed": false
+    },
+    {
+      "remote": {
+        "id": 12,
+        "uri": 12
+      },
+      "confirmed": false
+    },
+    {
+      "remote": {
+        "id": "synthetic-remote-id",
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/synthetic",
+        "url": "https://example.com/@synthetic/synthetic-remote-id",
+        "account": {
+          "id": "synthetic-account-id",
+          "username": "synthetic",
+          "acct": "synthetic",
+          "url": "https://example.com/@synthetic"
+        }
+      },
+      "confirmed": true
+    }
+  ],
+  "schedule_responses": [
+    {
+      "rc": 0,
+      "stdout": "not JSON",
+      "ok": false
+    },
+    {
+      "rc": 0,
+      "stdout": "{}",
+      "ok": false
+    },
+    {
+      "rc": 0,
+      "stdout": "{\"ok\":true}",
+      "ok": false
+    },
+    {
+      "rc": 0,
+      "stdout": "{\"ok\":true,\"item\":{\"id\":\"\"}}",
+      "ok": false
+    },
+    {
+      "rc": 0,
+      "stdout": "{\"ok\":true,\"error\":\"synthetic failure\",\"item\":{\"id\":\"synthetic-task\"}}",
+      "ok": false
+    },
+    {
+      "rc": 1,
+      "stdout": "{\"ok\":true,\"item\":{\"id\":\"synthetic-task\"}}",
+      "ok": false
+    },
+    {
+      "rc": 0,
+      "stdout": "{\"ok\":true,\"item\":{\"id\":\"synthetic-task\"}}",
+      "ok": true
+    }
+  ],
+  "visibility_responses": [
+    "{\"visibility\":\"PRIVATE\",\"nameWithOwner\":\"example/synthetic-promotion-config\"}",
+    "{\"visibility\":\"PUBLIC\"}",
+    "{\"visibility\":\"UNKNOWN\"}",
+    "{}",
+    "[]",
+    "not JSON"
+  ],
+  "invalid_recipients": [
+    "",
+    "not-an-address",
+    "<user1@example.com>",
+    "user 1@example.com"
+  ],
+  "invalid_countries": [
+    "",
+    "ZZ",
+    null
+  ],
+  "late_banned_claim": "Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph. Synthetic review paragraph.  unlimited free",
+  "oversized_body": "Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. Synthetic reviewed content. "
+}

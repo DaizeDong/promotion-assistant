@@ -46,8 +46,8 @@ Or clone manually:
 git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
 ```
 
-Then create a per-product config repo (fork the `companion config kit` template, Mode B secrets) and
-point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
+Then create a separate committed Git companion with PRIVATE fetch and push destinations on every
+remote (fork the `companion config kit` template, Mode B secrets), and point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
 
 ## Quick start
 
@@ -68,14 +68,19 @@ policy and credentials from a **separate, private** companion config repo. Full 
 
 - **Mount (discovery order):** `$PROMO_CONFIG_DIR` (primary) → `$PROMOTION_ASSISTANT_CONFIG` →
   `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
-  `~/.config/promotion-assistant-config/`. First that exists wins; absent = fail-closed.
+  `~/.config/promotion-assistant-config/`. An explicit path or highest nonempty environment selection is authoritative and must validate.
+  Home directories apply only without an explicit/environment selection; a bad selection never falls through.
 - **First time:**
   ```bash
   cd skills/promotion-assistant
   python scripts/init_config.py        # stamp a conformant skeleton (deterministic)
   export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # or pass --out <dir> to init
-  python scripts/verify_config.py       # doctor: PASS/FAIL, names what is missing
+  python scripts/verify_config.py       # verify the skeleton; commit it in a separate PRIVATE companion
+  python scripts/cli.py doctor --json  # runtime boundary and local channel setup
   ```
+- **Email setup:** the configured helper must implement the complete
+  [reviewed-email-v1 contract](skills/promotion-assistant/reference/email-helper-contract.md).
+  An installed legacy helper or a message ID alone does not prove sender/content or make email ready.
 - **Switch configs (hot-swap):** point the env var at another config dir, configs are
   self-contained, no other change: `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`.
 - **Secrets:** Mode B, `secrets/*` is gitignored and never enters git; back up out-of-band.
@@ -88,16 +93,18 @@ growth / funnel / multi-account. (Or run the CLI directly.)
 
 ## Example output
 
-`run --once` in dry-run prints e.g. `{"status":"ok","dispatch":{"status":"simulated",...},"arm":"armA"}`
-and appends a `simulated` event + a `dry-run.jsonl` line, zero network egress until per-channel live
-authorization.
+`run --once` returns `run_id`, `status`, `counts` and the full reviewed `items`. Each destination
+includes its complete payload, consent/suppression disposition, receipt and retryability. Dry runs
+write private previews and events; their status is `simulated`, and no provider effect occurs.
+See [CONFIG.md](CONFIG.md) for PRIVATE storage and run/resume behavior.
 
 ## Limitations
 
 - Going live is **per-channel, deliberate, and out of scope for build/test** (dry-run only).
-- Several channels ship as **deferred-gaps** (Mastodon/Bluesky/Reddit/X/PH/HN), registered, not
-  silently dropped; live transports today are email (via `send-gmail.ps1`) and own-server Discord,
-  both still behind per-channel authorize.
+- Email, own-server Discord, Mastodon and Bluesky have automated adapters. Registered manual
+  surfaces use `prep`; X and unknown platforms remain deferred. All automated delivery requires
+  per-channel authorization and a matching remote receipt. `channels list --json` distinguishes
+  implementation, local configuration and live proof; synthetic tests never count as live proof.
 - Platform ToS grey areas cannot be eliminated; the throttle/humanize layer lowers, not removes, ban
   probability.
 

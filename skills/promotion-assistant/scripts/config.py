@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from .private_storage import prove
 
 try:  # optional; copy/audiences may be YAML if PyYAML present, else JSON sidecars
     import yaml  # type: ignore
@@ -31,14 +32,17 @@ class ConfigError(Exception):
 
 
 def find_config_dir(explicit: str | None = None) -> Path:
-    cands = []
-    if explicit:
-        cands.append(Path(explicit))
+    selected = explicit
     # env vars: PROMO_CONFIG_DIR stays primary (the user-chosen canonical name); the
     # config-spec canonical aliases are honored too so spec and code agree (additive).
     for ev in ("PROMO_CONFIG_DIR", "PROMOTION_ASSISTANT_CONFIG", "PROMOTION_ASSISTANT_CONFIG_DIR"):
-        if os.environ.get(ev):
-            cands.append(Path(os.environ[ev]))
+        if selected is None and os.environ.get(ev):
+            selected = os.environ[ev]
+    if selected is not None:
+        if not isinstance(selected, (str, os.PathLike)) or not str(selected).strip() or not Path(selected).expanduser().is_dir():
+            raise ConfigError('selected config directory is missing or invalid')
+        return Path(selected).expanduser().resolve()
+    cands = []
     cands.append(Path.home() / ".promotion-assistant-config")
     cands.append(Path.home() / ".config" / "promotion-assistant-config")
     for c in cands:
@@ -70,9 +74,23 @@ class Config:
     """In-memory view of one product's config repo."""
 
     def __init__(self, root: Path):
-        self.root = root
-        self.product = _load_doc(root / "product.json") or {}
-        self.registry = _load_doc(root / "registry.json") or {"channels": []}
+        try:
+            self.root = prove(root)
+            self.product = _load_doc(self.data_path('product.json'))
+            self.registry = _load_doc(self.data_path('registry.json'))
+            if self.registry is None:
+                self.registry = {"channels": []}
+            if not isinstance(self.product, dict) or not isinstance(self.registry, dict):
+                raise ValueError('product and registry must be objects')
+            channels = self.registry.get('channels', [])
+            if (not isinstance(channels, list) or any(not isinstance(row, dict)
+                    or not isinstance(row.get('slug'), str) or not row['slug'] for row in channels)
+                    or len({row['slug'] for row in channels}) != len(channels)):
+                raise ValueError('registry channels must have unique nonempty slugs')
+            if not isinstance(self.product.get('compliance', {}), dict):
+                raise ValueError('product compliance must be an object')
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            raise ConfigError(str(exc)) from exc
         if not self.product:
             raise ConfigError("product.json missing/empty in %s" % root)
 
@@ -115,29 +133,46 @@ class Config:
         return str(tok)
 
     def policy(self, slug: str) -> dict:
-        doc = _load_doc(self.root / "channels" / slug / "policy.json") or {}
+        doc = _load_doc(self.data_path('channels', slug, 'policy.json')) or {}
+        if not isinstance(doc, dict):
+            raise ConfigError('channel policy must be an object')
         return doc
 
     def copy(self, campaign: str) -> list:
-        doc = _load_doc(self.root / "copy" / ("%s.yaml" % campaign))
+        self.data_path('copy', "%s.json" % campaign)  # Prove the optional YAML fallback too.
+        doc = _load_doc(self.data_path('copy', "%s.yaml" % campaign))
         if doc is None:
-            doc = _load_doc(self.root / "copy" / ("%s.json" % campaign))
+            doc = _load_doc(self.data_path('copy', "%s.json" % campaign))
+        if doc is not None and (not isinstance(doc, list) or any(not isinstance(arm, dict) for arm in doc)):
+            raise ConfigError('copy library must be a list of arms')
         return doc or []
 
     def audiences(self) -> dict:
-        doc = _load_doc(self.root / "audiences.yaml")
+        self.data_path('audiences.json')
+        doc = _load_doc(self.data_path('audiences.yaml'))
         if doc is None:
-            doc = _load_doc(self.root / "audiences.json")
+            doc = _load_doc(self.data_path('audiences.json'))
         return doc or {}
 
-    # --- metrics paths (gitignored dir in the config repo) ---
+    def data_path(self, *parts) -> Path:
+        try:
+            path = prove(self.root.joinpath(*parts))
+            if not path.is_relative_to(self.root):
+                raise ValueError('runtime path escapes selected config root')
+            return path
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            raise ConfigError(str(exc)) from exc
+
+    # Runtime DATA is versioned in the PRIVATE companion.
     def metrics_dir(self) -> Path:
-        d = self.root / "metrics"
+        d = self.data_path('metrics')
+        for name in ('events.jsonl', 'dry-run.jsonl', 'bandit-state.json', 'throttle-state.json', 'suppression.csv', 'runs'):
+            self.data_path('metrics', name)
         d.mkdir(parents=True, exist_ok=True)
         return d
 
     def compliance_dir(self) -> Path:
-        d = self.root / "compliance"
+        d = self.data_path('compliance')
         d.mkdir(parents=True, exist_ok=True)
         return d
 

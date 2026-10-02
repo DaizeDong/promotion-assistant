@@ -64,14 +64,17 @@ python scripts/cli.py apply                       # secrets -> active config (de
 python scripts/cli.py plan --campaign <C>         # content calendar -> schedule-reminder
 python scripts/cli.py run  --campaign <C> --once  # gated dispatch (DRY-RUN by default)
 python scripts/cli.py prep --campaign <C> [--channel X]   # manual-prep: human-postable copy+checklist
-python scripts/cli.py participate discover --sub <S>      # participation copilot (human-in-the-loop):
-python scripts/cli.py participate draft --title .. --body ..  #   surface expertise-fit threads, draft a
-python scripts/cli.py participate status --age-days N --karma N  #   genuine reply you post BY HAND,
-python scripts/cli.py participate record --url <permalink>       #   track give-before-ask readiness
+python scripts/cli.py participate discover --sub <S>      # find relevant source threads
+python scripts/cli.py participate draft --url <source-thread> --title .. --body ..
+python scripts/cli.py participate status --age-days N --karma N  # review participation readiness
+python scripts/cli.py participate record --url <comment-permalink> --thread <source-thread> --type give|ask [--draft-id <draft-id>]
 python scripts/cli.py authorize --channel <X>     # the exact per-channel live-unlock steps
 python scripts/cli.py report --funnel | --bandit  # funnel + arm convergence
 python scripts/cli.py doctor                       # health / compliance / dry-run self-check
 ```
+
+Use `--draft-id` when recording a post based on a generated draft; use its printed event ID.
+The source thread and final `give` or `ask` type are required for every participation record.
 
 ## Hard rules (never violate)
 
@@ -85,11 +88,15 @@ python scripts/cli.py doctor                       # health / compliance / dry-r
    level-skipping), lognormal jitter, per-account variants + content-hash dedup. Random delay alone
    is NOT safety.
 4. **Secrets = Mode B.** Promo OAuth/SMTP creds are high blast-radius + auto-revoked → `secrets/*`
-   is always gitignored in the config repo; never commit copy or creds into this skill.
+   is always gitignored in the config repo. Real copy, audiences, consent and runtime DATA are
+   versioned in a separate verified PRIVATE companion; none belong in this public skill tree.
 5. **Don't reimplement the base.** Scheduling → `schedule-reminder` CLI only (never its .db/SQL);
    alerts → the existing Discord relay; email → the machine's `send-gmail.ps1` link.
 6. **Failure = explicit gap.** A channel with no compliant automated transport is registered as a
    `deferred-gap`, never silently dropped.
+7. **Review and resume.** `run --run-id ID` freezes full per-destination payloads; `run --run-id ID
+   --resume` uses that saved set and rechecks consent/suppression. Completed items never repeat.
+   Uncertain provider outcomes require reconciliation proof before retry; see `CONFIG.md`.
 
 ## Acceptance / regression
 

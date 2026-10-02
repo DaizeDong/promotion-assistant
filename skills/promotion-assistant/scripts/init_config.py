@@ -47,9 +47,9 @@ claude.json
 !*.key.template
 !*.pem.template
 
-# Runtime/PII state — gitignored per config-schema.md
-metrics/
-compliance/consent-ledger.jsonl
+# Runtime DATA is versioned in this PRIVATE companion.
+# Only transient run locks are ignored.
+metrics/runs/*.lock
 """
 
 SECRETS_README = """\
@@ -133,6 +133,7 @@ def main():
         write(os.path.join(out, "runbooks", fn), body, a.force)
 
     print("\nNext:")
+    print("  Initialize this directory as a separate PRIVATE Git companion with a verified origin.")
     print("  1) Fill product.json (name, aff_base, compliance.*) and add channels to registry.json.")
     print("  2) Per channel: channels/<slug>/policy.json (caps/gap/warmup/backoff) +")
     print("     secrets/<slug>.env (real values, gitignored) + secrets/<slug>.env.template.")

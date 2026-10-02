@@ -36,14 +36,14 @@ def test_missing_credentials_errors(monkeypatch):
     monkeypatch.delenv("PROMO_DISCORD_BOT_TOKEN", raising=False)
     monkeypatch.delenv("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", raising=False)
     r = P.DiscordOwnServerProvider().publish(PAYLOAD, live=True)
-    assert r["status"] == "error" and "not in env" in r["reason"]
+    assert r["status"] == "not_applied" and "not in env" in r["reason"]
 
 
 def test_non_numeric_channel_rejected(monkeypatch):
     monkeypatch.setenv("PROMO_DISCORD_BOT_TOKEN", "tok")
     monkeypatch.setenv("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", "not-a-number")
     r = P.DiscordOwnServerProvider().publish(PAYLOAD, live=True)
-    assert r["status"] == "error" and "numeric" in r["reason"]
+    assert r["status"] == "not_applied" and "numeric" in r["reason"]
 
 
 def test_live_success_maps_to_sent(monkeypatch):
@@ -70,7 +70,7 @@ def test_empty_message_errors(monkeypatch):
     monkeypatch.setenv("PROMO_DISCORD_BOT_TOKEN", "tok")
     monkeypatch.setenv("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", "123")
     r = P.DiscordOwnServerProvider().publish({"subject": "", "body": "", "cta": ""}, live=True)
-    assert r["status"] == "error" and "empty" in r["reason"]
+    assert r["status"] == "not_applied" and "empty" in r["reason"]
 
 
 def test_429_maps_to_throttled(monkeypatch):

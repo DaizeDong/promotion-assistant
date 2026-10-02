@@ -36,7 +36,14 @@ EU_EEA = {
     "SE", "IS", "LI", "NO", "GB",
 }
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+COUNTRIES = set(('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ '
+    'CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR '
+    'GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP '
+    'KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ '
+    'NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ '
+    'TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW').split())
+
+_EMAIL_RE = re.compile(r"^[^\s@\"'<>]+@[^\s@\"'<>]+\.[^\s@\"'<>]+$")
 
 # Common Cyrillic/Greek/misc lowercase homoglyphs -> ASCII. NFKC does NOT fold these
 # (they are distinct letters), so an explicit confusable map is required.
@@ -88,6 +95,8 @@ def normalize_recipient(recip: str) -> str:
     Lowercase + NFKC + strip format chars; for email addresses drop the local-part `+tag`
     alias (a@example.com and a+promo@example.com are the same mailbox for suppression purposes).
     """
+    if not isinstance(recip, str):
+        return ''
     r = _normalize_text(recip).replace(" ", "")
     if "@" in r:
         local, _, domain = r.partition("@")
@@ -97,12 +106,14 @@ def normalize_recipient(recip: str) -> str:
 
 
 def _looks_like_email(recip: str) -> bool:
-    return bool(_EMAIL_RE.match((recip or "").strip()))
+    return isinstance(recip, str) and bool(_EMAIL_RE.match(recip.strip()))
 
 
 def _is_email(payload: dict) -> bool:
     """Email-specific checks fire when the payload is email-like — by transport, channel, OR the
     recipient actually being an email address — so a mislabeled transport can't skip CAN-SPAM."""
+    if payload.get('audience_mode') == 'owned_broadcast' and payload.get('platform') != 'email':
+        return _looks_like_email(payload.get('recipient'))
     transport = (payload.get("transport") or "").strip().lower()
     channel = (payload.get("channel") or "").strip().lower()
     if transport in ("smtp", "email", "mail", "ses", "sendgrid"):
@@ -152,6 +163,20 @@ def check(payload: dict, *, policy: dict, suppression: set, consent: dict) -> tu
     # --- suppression (all channels with an addressable recipient) ---
     if recip_norm and recip_norm in suppression:
         reasons.append("recipient on suppression list")
+    record = consent.get(recip_norm) or {}
+    if str(record.get('status', '')).lower() == 'withdrawn':
+        reasons.append('consent explicitly withdrawn')
+
+    addressed = payload.get('audience_mode') == 'addressed' or _is_email(payload)
+    if addressed:
+        recipient = payload.get('recipient')
+        if not isinstance(recipient, str) or not recipient.strip():
+            reasons.append('missing or malformed recipient')
+        country = payload.get('recipient_country')
+        if not isinstance(country, str) or country.strip().upper() not in COUNTRIES:
+            reasons.append('missing or invalid recipient country')
+        if _is_email(payload) and (not isinstance(recipient, str) or not _looks_like_email(recipient)):
+            reasons.append('missing or malformed email recipient')
 
     if _is_email(payload):
         # --- CAN-SPAM ---
@@ -169,11 +194,10 @@ def check(payload: dict, *, policy: dict, suppression: set, consent: dict) -> tu
             reasons.append("CAN-SPAM: deceptive subject")
 
         # --- GDPR / consent for EU recipients ---
-        country = (payload.get("recipient_country") or "").upper()
-        if country in EU_EEA:
-            rec = consent.get(recip_norm)
-            if not rec or not rec.get("lawful_basis"):
-                reasons.append("GDPR: EU recipient without lawful basis in consent ledger")
+    country = str(payload.get('recipient_country') or '').strip().upper()
+    if addressed and country in EU_EEA:
+        if not record.get('lawful_basis') or str(record.get('status', '')).lower() == 'withdrawn':
+            reasons.append('GDPR: EU recipient without current lawful basis in consent ledger')
 
     # --- banned product claims (any channel), matched on normalized text so zero-width /
     #     homoglyph obfuscation cannot slip a banned claim past the gate ---
@@ -182,7 +206,7 @@ def check(payload: dict, *, policy: dict, suppression: set, consent: dict) -> tu
     #     scam-adjacent reputation and gets the brand flamed across the RP scene. These phrases are
     #     forbidden by DEFAULT for every product; a product can add more via banned_claims but cannot
     #     remove these -- honest differentiation (stability / breadth / real price), never over-claim.
-    body_norm = _normalize_text((payload.get("body") or "") + " " + (payload.get("subject") or ""))
+    body_norm = _normalize_text(' '.join(payload.get(field) or '' for field in ('body', 'subject', 'cta')))
     for claim in list(policy.get("banned_claims", [])) + DEFAULT_OVERCLAIM:
         cn = _normalize_text(claim)
         if cn and cn in body_norm:

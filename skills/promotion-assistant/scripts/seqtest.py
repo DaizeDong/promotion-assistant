@@ -7,9 +7,9 @@ A/B test read with continuous peeking inflates the Type-I (false-positive) error
 alpha to 20-30% (you stop the moment p<0.05 by chance). ARCHITECTURE.md sec 7.3 mandates a separate
 **always-valid** test for reportable causal conclusions, so peeking is safe by construction.
 
-This module implements a two-sided **betting e-process** for the equality of two Bernoulli reward
-streams (E[reward_A] == E[reward_B]). It is anytime-valid: by Ville's inequality, the probability
-that the e-value EVER crosses 1/alpha under the null is <= alpha, no matter how often you peek.
+This module combines two one-sided betting processes. Validity requires conditional mean
+zero paired differences given past observations (not merely equal unconditional means).
+Ville's inequality and a union bound control any-time rejection at two-sided level alpha.
 
 Construction (pure stdlib, no numpy):
   - For each paired observation d_t = a_t - b_t in {-1, 0, +1}, run two one-sided e-processes,
@@ -19,8 +19,8 @@ Construction (pure stdlib, no numpy):
   - lam_t is chosen *predictably* (before seeing d_t) by ONS, projected to [0, lam_max], with
     lam_max < 1 so 1 + lam*d stays > 0 for d in [-1, 1] (wealth never goes non-positive).
   - Under H0 each factor is a supermartingale (E[1 + lam*d | past] = 1 + lam*E[d] <= 1), so the
-    running max wealth is a valid e-process and reject-threshold 1/(alpha/2) = 2/alpha controls the
-    one-sided error at alpha/2 at ANY stopping time.
+    wealth is a nonnegative supermartingale. Its running maximum is a diagnostic crossing
+    statistic, not itself an e-process. The threshold 2/alpha controls each side at alpha/2.
 
 Decision: reject H0 the first time max(wealth_pos, wealth_neg) >= 2/alpha; the crossing process
 gives the direction ("A" or "B"). Stopping is sticky (once rejected, stays rejected).
@@ -55,7 +55,7 @@ class SequentialABTest:
     """Always-valid two-sided sequential test of E[reward_A] == E[reward_B].
 
     Feed paired Bernoulli (or [0,1]-bounded) rewards via update(); read .reject / .direction /
-    .e_value at any time. Safe to peek every step.
+    .p_value at any time. Safe to peek under the stated conditional null.
     """
 
     alpha: float = 0.05
@@ -71,7 +71,7 @@ class SequentialABTest:
     _lam_neg: float = field(default=0.0, init=False)
     _A_neg: float = field(default=0.0, init=False)
     _b_neg: float = field(default=0.0, init=False)
-    # running maxima (e-process = running max of the supermartingale wealth)
+    # Diagnostic running maxima used for the anytime crossing probability
     _emax_pos: float = field(default=1.0, init=False)
     _emax_neg: float = field(default=1.0, init=False)
     reject: bool = field(default=False, init=False)
@@ -87,15 +87,19 @@ class SequentialABTest:
         return 2.0 / self.alpha
 
     @property
-    def e_value(self) -> float:
-        """Two-sided e-value = max of the two one-sided running maxima."""
+    def max_one_sided_wealth(self) -> float:
+        """Maximum observed one-sided wealth; this statistic is not a two-sided e-value."""
         return max(self._emax_pos, self._emax_neg)
 
     @property
+    def e_value(self) -> float:
+        """Deprecated diagnostic alias for max_one_sided_wealth, not an e-value."""
+        return self.max_one_sided_wealth
+
+    @property
     def p_value(self) -> float:
-        """Anytime-valid p-value = min(1, 1/e_value). Monotone non-increasing as evidence grows."""
-        e = self.e_value
-        return 1.0 if e <= 0.0 else min(1.0, 1.0 / e)
+        """Two-sided anytime p-value from the union bound: min(1, 2/max wealth)."""
+        return min(1.0, 2.0 / self.max_one_sided_wealth)
 
     def update(self, a_reward: float, b_reward: float) -> dict:
         """Observe one paired (reward_A, reward_B) and advance both e-processes.
@@ -137,7 +141,8 @@ class SequentialABTest:
     def snapshot(self) -> dict:
         return {
             "n": self.n,
-            "e_value": self.e_value,
+            "e_value": self.e_value,  # deprecated diagnostic key; see max_one_sided_wealth
+            "max_one_sided_wealth": self.max_one_sided_wealth,
             "p_value": self.p_value,
             "reject": self.reject,
             "direction": self.direction,
@@ -149,7 +154,7 @@ def run_sequential_ab(pairs, alpha: float = 0.05) -> dict:
     """Convenience: run a full paired stream, peeking every step, return the final snapshot.
 
     `pairs` is an iterable of (a_reward, b_reward). Stops early-reporting via the sticky reject
-    flag but still consumes the stream (the e-process running max is what matters for validity).
+    flag but still consumes the stream; p_value uses the two-sided crossing correction.
     """
     t = SequentialABTest(alpha=alpha)
     for a, b in pairs:

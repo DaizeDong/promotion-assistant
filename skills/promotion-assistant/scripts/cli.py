@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """promotion-assistant CLI — the operator's mental model.
 
-  promotion-assistant init       --config DIR        scaffold/point at a product config repo
+  promotion-assistant --config DIR init             check an existing product config repo
   promotion-assistant channels   list                show registered channels + transport state
   promotion-assistant apply                          bridge secrets -> active config (delegates to
                                                        the config repo's own scripts/apply.py)
@@ -250,8 +250,13 @@ def cmd_participate(args):
     if sub == "status":
         # Readiness dashboard: give-before-ask ledger + account standing + graduation criteria.
         from scripts import participation as _pp
+        try:
+            community = _pp.normalize_community(args.sub)
+        except ValueError as exc:
+            print("status requires a valid --sub: %s" % exc, file=sys.stderr)
+            return 2
         evs = _events.read(cfg.metrics_dir() / "events.jsonl")
-        entries = _pp.confirmed_entries(evs)
+        entries = _pp.confirmed_entries(evs, community=community)
         account = {
             "age_days": args.age_days, "karma": args.karma,
             "sub_gives": sum(1 for x in entries if x["type"] == "give" and x.get("url")),
@@ -259,7 +264,7 @@ def cmd_participate(args):
         }
         rd = _pp.readiness(account, entries)
         print("=" * 66)
-        print("PARTICIPATION READINESS")
+        print("PARTICIPATION READINESS  r/%s" % community)
         print("=" * 66)
         lb = rd["ledger"]
         print("give-before-ask ledger: %d gives / %d asks  (ratio %s, 9:1 %s)"
@@ -409,7 +414,7 @@ def main(argv=None):
     src = sub.add_parser("record-post"); src.add_argument("--channel", required=True); src.add_argument("--url", required=True); src.add_argument("--arm-id"); src.add_argument("--campaign"); src.add_argument("--decision-id"); src.set_defaults(fn=cmd_record_post)
     spa = sub.add_parser("participate")
     spa.add_argument("what", choices=["discover", "draft", "status", "record"])
-    spa.add_argument("--sub", help="subreddit (discover)")
+    spa.add_argument("--sub", help="target subreddit (required for status; optional for discover)")
     spa.add_argument("--limit", default=25, help="discover: posts to fetch")
     spa.add_argument("--top", default=8, help="discover: actionable leads to show")
     spa.add_argument("--url", help="draft-source or record: post/comment permalink")
@@ -433,9 +438,9 @@ def main(argv=None):
         return args.fn(args)
     except _config.ConfigError as e:
         sys.stderr.write("promotion-assistant: no usable config (%s)\n" % e)
-        sys.stderr.write("  -> run `promotion-assistant init --config <dir>`, or set $PROMO_CONFIG_DIR "
-                         "to a product config repo (bootstrap: scripts/init_config.py; see "
-                         "runbooks/new-machine.md).\n")
+        sys.stderr.write("  -> create a skeleton with `python scripts/init_config.py --out <dir>`, "
+                         "then fill and commit the separate PRIVATE companion. Check it with "
+                         "`python scripts/cli.py --config <dir> init`.\n")
         return 2
 
 

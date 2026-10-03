@@ -377,13 +377,16 @@ def test_schedule_receipt_and_cli_exit_agree(case, monkeypatch, capsys, reply):
 
     def process(argv, **kwargs):
         calls.append(argv)
+        if argv[2] == 'creation-preflight':
+            return subprocess.CompletedProcess(argv, 0, json.dumps(
+                {'ok': True, 'complete': True, 'decision': 'create', 'matches': []}), '')
         return subprocess.CompletedProcess(argv, reply['rc'], reply['stdout'], '')
 
     monkeypatch.setattr(subprocess, 'run', process)
     rc = cli.main(['--config', str(case['root']), 'plan', '--campaign', case['campaign']])
     result = json.loads(capsys.readouterr().out)
     assert (rc == 0) is reply['ok'] and (result['status'] == 'complete') is reply['ok']
-    assert result['scheduled'] == int(reply['ok']) and len(calls) == 1
+    assert result['scheduled'] == int(reply['ok']) and len(calls) == 2
 
 
 def test_interruption_keeps_uncertainty_and_does_not_resend(case, monkeypatch):
@@ -427,8 +430,9 @@ def test_cli_run_dry_and_blocked_exit_contract(case, capsys):
 
 @pytest.mark.parametrize('linked', [False, True])
 @pytest.mark.parametrize('visibility', SAMPLE['visibility_responses'])
-def test_actual_private_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic_private_metadata, linked, visibility):
+def test_private_api_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic_private_metadata, linked, visibility):
     from scripts import private_storage
+    from types import SimpleNamespace
     monkeypatch.setattr(private_storage, 'repository', synthetic_private_metadata)
     root = tmp_path/'synthetic-companion'
     root.mkdir()
@@ -438,36 +442,33 @@ def test_actual_private_boundary_normal_and_linked(tmp_path, monkeypatch, synthe
         (root/'.git').mkdir()
     (root/'product.json').write_text(json.dumps(SAMPLE['product']))
     (root/'registry.json').write_text(json.dumps(SAMPLE['registry']))
+    api = private_storage._guard_api()
     calls = []
-
-    def metadata(argv):
-        calls.append(argv)
-        if argv[0] == 'gh':
-            return visibility
-        if '--show-toplevel' in argv:
-            return str(root)
-        if argv[-1:] == ['remote']:
-            return 'origin'
-        if argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
-            return '1'*40
-        if 'get-url' in argv and '--all' in argv and argv[-1] == 'origin':
-            return SAMPLE['origin']
-        raise AssertionError('unexpected Git metadata query')
-
-    monkeypatch.setattr(private_storage, '_run', metadata)
+    def proof(repo):
+        calls.append(('proof', repo))
+        if visibility != SAMPLE['visibility_responses'][0]:
+            raise api.GitError('synthetic rejected visibility receipt')
+        return SimpleNamespace(root=str(root), repositories=('example/synthetic-promotion-config',),
+                               signature='synthetic-publication')
+    def read(proof, *arguments):
+        calls.append(('read', arguments))
+        assert arguments == ('rev-parse', '--verify', 'HEAD')
+        return SimpleNamespace(stdout='1'*40, returncode=0)
+    monkeypatch.setattr(api, 'prove_private_companion', proof)
+    monkeypatch.setattr(api, 'read_private_companion_git', read)
     if visibility == SAMPLE['visibility_responses'][0]:
         assert config.Config(root).metrics_dir() == root/'metrics'
     else:
         with pytest.raises(config.ConfigError):
             config.Config(root)
         assert not (root/'metrics').exists()
-    assert any('--show-toplevel' in argv for argv in calls)
+    assert calls[0] == ('proof', root)
 
 
 def test_unversioned_and_source_storage_fail_before_metadata(tmp_path, monkeypatch, synthetic_private_metadata):
     from scripts import private_storage
     monkeypatch.setattr(private_storage, 'repository', synthetic_private_metadata)
-    monkeypatch.setattr(private_storage, '_run', lambda argv: pytest.fail('unversioned/source roots need no metadata lookup'))
+    monkeypatch.setattr(private_storage, '_guard_api', lambda: pytest.fail('unversioned/source roots need no metadata lookup'))
     for root in (tmp_path, private_storage.ROOT):
         with pytest.raises(config.ConfigError):
             config.Config(root)

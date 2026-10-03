@@ -7,56 +7,32 @@ import pytest
 
 from scripts import cli, growth, participation, private_storage, throttle
 
-# Capture the real boundary before the autouse metadata fixture replaces it.
-_REAL_PRIVATE_RUN = private_storage._run
-
-
-@pytest.mark.parametrize("url", [
-    "https://github.com/example/synthetic-promotion-config.git",
-    "git@github.com:example/synthetic-promotion-config.git",
-    "ssh://git@github.com/example/synthetic-promotion-config.git",
-])
-@pytest.mark.parametrize("selected_host", [None, "github.com", "github.example.invalid"])
-@pytest.mark.parametrize("visibility", ["PUBLIC", "PRIVATE"])
-def test_visibility_subprocess_is_bound_to_publication_host(
-        tmp_path, monkeypatch, url, selected_host, visibility):
-    identity = "example/synthetic-promotion-config"
-    qualified = "https://github.com/" + identity
+@pytest.mark.parametrize('selected_host', [None, 'github.com', 'github.example.invalid'])
+@pytest.mark.parametrize('allowed', [False, True])
+def test_publication_report_delegates_without_clearing_process_policy(
+        tmp_path, monkeypatch, selected_host, allowed):
     if selected_host is None:
-        monkeypatch.delenv("GH_HOST", raising=False)
+        monkeypatch.delenv('GH_HOST', raising=False)
     else:
-        monkeypatch.setenv("GH_HOST", selected_host)
-    monkeypatch.setenv("GIT_CONFIG_COUNT", "5")
+        monkeypatch.setenv('GH_HOST', selected_host)
+    monkeypatch.setenv('GIT_CONFIG_COUNT', '5')
+    api = private_storage._guard_api()
     calls = []
-
-    def git_metadata(repo, *args):
-        if args == ("remote",):
-            return "origin"
-        assert args[:2] == ("remote", "get-url") and args[-2:] == ("--all", "origin")
-        return url
-
-    def external(argv, **options):
-        calls.append((list(argv), options))
-        # A different host has a same-name PRIVATE repository. Only the
-        # qualified publication-host query may use the real endpoint verdict.
-        answer = visibility if argv[3] == qualified else "PRIVATE"
-        return SimpleNamespace(returncode=0, stdout=json.dumps(
-            {"visibility": answer, "nameWithOwner": identity}))
-
-    monkeypatch.setattr(private_storage, "_git", git_metadata)
-    monkeypatch.setattr(private_storage, "_run", _REAL_PRIVATE_RUN)
-    monkeypatch.setattr(private_storage.subprocess, "run", external)
-    if visibility == "PRIVATE":
-        accepted = private_storage.publication_destinations(tmp_path)
-        assert accepted == (("origin", "fetch", identity), ("origin", "push", identity))
+    def proof(repo):
+        calls.append(repo)
+        assert private_storage.os.environ.get('GH_HOST') == selected_host
+        assert private_storage.os.environ['GIT_CONFIG_COUNT'] == '5'
+        if not allowed:
+            raise api.GitError('synthetic unsafe effective policy')
+        return SimpleNamespace(root=str(repo), repositories=('example/synthetic-promotion-config',),
+                               signature='synthetic-publication')
+    monkeypatch.setattr(api, 'prove_private_companion', proof)
+    if allowed:
+        assert private_storage.publication_destinations(tmp_path) == ('example/synthetic-promotion-config',)
     else:
-        with pytest.raises(ValueError, match="PUBLIC or unknown"):
+        with pytest.raises(ValueError, match='PRIVATE companion verification failed'):
             private_storage.publication_destinations(tmp_path)
-    assert calls
-    assert all(argv[:4] == ["gh", "repo", "view", qualified] for argv, _ in calls)
-    assert all(options["env"]["GH_HOST"] == "github.com" for _, options in calls)
-    assert all("GIT_CONFIG_COUNT" not in options["env"] for _, options in calls)
-    assert all(options["env"]["GIT_OPTIONAL_LOCKS"] == "0" for _, options in calls)
+    assert calls == [tmp_path]
 
 
 def instance(path, now):

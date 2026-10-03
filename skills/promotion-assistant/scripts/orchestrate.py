@@ -24,11 +24,32 @@ from . import metrics as _metrics
 from . import providers as _providers
 from . import throttle as _throttle
 from . import participation as _participation
+from . import private_storage
 from .schedule_bridge import ScheduleBridge
 
 
 def _iso(dt):
     return dt.replace(microsecond=0).isoformat() + "Z"
+
+
+def _schedule_request(cfg, request):
+    """Freeze the first request before calling the base; retries keep its due time."""
+    digest = request['idempotency_key'].removeprefix('promotion:')
+    path = cfg.data_path('metrics', 'schedule-requests', digest+'.json')
+
+    def freeze(before):
+        if before is None:
+            return json.dumps(request, sort_keys=True)+'\n', request
+        saved = json.loads(before)
+        if (not isinstance(saved, dict) or saved.keys() != request.keys()
+                or any(saved[key] != value for key, value in request.items() if key != 'due_at')
+                or not isinstance(saved.get('due_at'), str)
+                or saved['due_at'][:10] != request['due_at'][:10]):
+            raise ValueError('scheduled request changed; inspect its saved request before replanning')
+        _dt.datetime.fromisoformat(saved['due_at'])
+        return before, saved
+
+    return private_storage.update_text(path, freeze)
 
 
 def plan(cfg, campaign: str, *, start=None, bridge: ScheduleBridge | None = None, days=7):
@@ -62,9 +83,16 @@ def plan(cfg, campaign: str, *, start=None, bridge: ScheduleBridge | None = None
             "x_promotion_utm": arm.get("utm", {}),
         }
         if bridge.available():
-            res = bridge.schedule_item(title="promo:%s:%s" % (slug, arm.get("id")),
-                                       due_at=_iso(due), idempotency_key=idem, ext=ext,
-                                       description=(arm.get("hook") or "")[:200])
+            request = dict(title="promo:%s:%s" % (slug, arm.get("id")),
+                           due_at=_iso(due), idempotency_key=idem, ext=ext,
+                           description=(arm.get("hook") or "")[:200])
+            try:
+                request = _schedule_request(cfg, request)
+            except (OSError, ValueError) as exc:
+                errors.append({'ok': False, 'error_code': 'ERR_SCHEDULE_CHANGED',
+                               'message': str(exc), 'idempotency_key': idem})
+                continue
+            res = bridge.schedule_item(**request)
             confirmed = (isinstance(res, dict) and res.get('ok') is True
                          and isinstance(res.get('item'), dict) and bool(res['item'].get('id')))
             (scheduled if confirmed else errors).append(res)

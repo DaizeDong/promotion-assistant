@@ -20,7 +20,10 @@ through to another product. Home locations apply only when no environment select
 If none resolves, the engine fails closed with a clear message (it never invents a default product).
 The selected directory must belong to a separate versioned PRIVATE Git companion. Git resolves
 ordinary and linked worktrees. Every effective fetch and push URL on every remote must resolve
-to the matching PRIVATE GitHub identity, with no cached authorization across operations.
+to the matching PRIVATE GitHub identity. Each operation obtains a new proof through the pinned
+Guards API, using the local `~/.pii-guard/visibility.json` receipt and both physical and effective
+Git configuration. Missing, stale, malformed or unknown evidence fails; storage operations do not
+make network visibility queries or refresh receipts. See the [shared contract](guards/COMPANION.md#verifying-a-companion).
 PUBLIC, unknown, unversioned, source-tree, escaping canonical DATA paths and hardlinked runtime
 files fail before use. `doctor` names the accepted PRIVATE publication identities.
 Local absolute helper/interpreter paths are resources and need not be inside the companion.
@@ -198,7 +201,11 @@ permalinks cannot add another contribution or silently change its classification
 plan --days is a positive horizon for the campaign's existing slots, not a repetition count.
 Its stable identity includes product, campaign, arm, channel, account, action and occurrence date.
 The schedule helper must return the documented JSON receipts with task IDs; the bridge does not
-pass a --json flag. Installed helper compatibility must be checked during setup.
+pass a --json flag. Setup must verify `creation-preflight` and `ensure` in the installed helper.
+The first plan records complete requests in the PRIVATE companion's `metrics/schedule-requests/`.
+Retries keep the saved due time and fields even as the clock advances, including completed tasks.
+Changed content or malformed saved requests stop for review; intentional date changes use the
+base's update or snooze operation on the existing task.
 
 
 ## Runtime quota changes

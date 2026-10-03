@@ -43,11 +43,23 @@ during build/test.
 Or clone manually:
 
 ```bash
-git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+cd ~/.claude/plugins/promotion-assistant
 ```
 
 Then create a separate committed Git companion with PRIVATE fetch and push destinations on every
 remote (fork the `companion config kit` template, Mode B secrets), and point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
+
+Use Python 3.11 or newer, Git, and a fresh PRIVATE visibility receipt at
+`~/.pii-guard/visibility.json`. The pinned Guards API checks that local receipt and the actual Git
+configuration; runtime storage checks do not call `gh` or refresh missing/stale evidence. See the
+[companion contract](guards/COMPANION.md#verifying-a-companion) before initializing or refreshing
+the receipt. JSON configuration needs no extra Python package; YAML configuration also needs PyYAML.
+Run the commands below from the cloned repository. For reminders, set `PROMO_REMINDER_PY` to the
+installed base's `reminder.py`, then check `python "$PROMO_REMINDER_PY" ensure --help` and initialize
+its local store with `python "$PROMO_REMINDER_PY" init`. The bridge requires `creation-preflight`
+and `ensure`; a legacy `add`-only helper is incompatible. Managed installations should use their
+current runtime's Python and reminder path. [Integration setup](skills/promotion-assistant/reference/integration.md).
 
 ## Quick start
 
@@ -75,9 +87,12 @@ policy and credentials from a **separate, private** companion config repo. Full 
   cd skills/promotion-assistant
   python scripts/init_config.py        # stamp a conformant skeleton (deterministic)
   export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # or pass --out <dir> to init
-  python scripts/verify_config.py       # verify the skeleton; commit it in a separate PRIVATE companion
+  # Fill product/channel configuration and commit the separate PRIVATE companion first.
+  python scripts/verify_config.py       # reports ready only after those prerequisites exist
   python scripts/cli.py doctor --json  # runtime boundary and local channel setup
   ```
+- **Explicit selection:** `python scripts/cli.py --config /path/to/private-companion init` checks an
+  existing config. Put `--config` before the subcommand; use `init_config.py --out` to create a skeleton.
 - **Email setup:** the configured helper must implement the complete
   [reviewed-email-v1 contract](skills/promotion-assistant/reference/email-helper-contract.md).
   An installed legacy helper or a message ID alone does not prove sender/content or make email ready.

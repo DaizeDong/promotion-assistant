@@ -37,5 +37,9 @@ Sampling only). Wiring each in is a self-evolve iteration gated on its signal:
 - Sequential A/B with always-valid p-values (mSPRT e-process, `seqtest.py`). `tests/test_seqtest_e19.py`.
 - Delayed-conversion reward censoring (`delayed.py`). `tests/test_delayed_e16.py`.
 
-## Planned (external dependencies)
-- Mastodon/Bluesky/Reddit/X live providers → flip deferred-gaps to live transports (need real OAuth).
+## External prerequisites and deferred work
+- Mastodon and Bluesky owned-account adapters are implemented. Live acceptance still requires
+  configured account credentials, per-channel authorization and confirmed provider receipts;
+  local adapter tests do not establish successful real publication.
+- X automated transport remains deferred. Reddit, JanitorAI-card, Product Hunt and Hacker News
+  use implemented manual preparation paths; a human publishes their output.

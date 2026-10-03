@@ -51,9 +51,18 @@ floor).
 
 **Readiness** (`readiness`): graduation is *proposed with evidence*, never self-declared. Criteria:
 account age ≥ N days, karma ≥ N, in-community accepted non-promo contributions ≥ N (global karma in
-a sub you've never engaged doesn't count), give:ask ratio holds 9:1 over the window, zero mod
+a sub you've never engaged doesn't count), give:ask ratio remains at least 9:1 after the next
+promotional post, zero mod
 strikes. All account numbers are three-valued-labeled (Measured/User-provided/Estimated) by the
 caller.
+
+Run `python scripts/cli.py participate status --sub <community> --age-days N --karma N`.
+The target is required and appears in the dashboard. Names are case-insensitive and accept
+`name`, `r/name` or `/r/name`. Both the accepted-contribution count and the 9:1 ledger use only
+confirmed publications whose Reddit permalink identifies that community; activity elsewhere
+does not change either count.
+The dashboard also shows the current historical ratio. Passing that historical check alone does
+not authorize another ask: 9 gives and 1 ask need 9 more gives before the next promotional post.
 
 **Courtesy pacing** (`pacing_ok`): per-day and per-sub caps + a post-removal 7-day per-sub circuit
 breaker. This is etiquette (don't spam, don't over-post), explicitly *not* classifier evasion: there
@@ -88,3 +97,6 @@ compliance disposition, and deduplicates the actual permalink. A duplicate with 
 association or give/ask classification fails. Only sent events with a human actuator, confirmed
 publication flag, permalink and explicit final classification enter the readiness ledger.
 Unclassified legacy events remain historical evidence without inflating either count.
+Classified legacy events whose permalink does not identify a Reddit community remain readable
+in the unfiltered history, but receive no credit in a community readiness check. Confirmed entries
+retain the normalized community and the stored source thread identity.

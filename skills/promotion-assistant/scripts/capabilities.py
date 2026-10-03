@@ -33,8 +33,7 @@ def channels(cfg, env=None):
 def doctor(cfg, env=None, channel=None):
     rows = channels(cfg, env)
     rows = [row for row in rows if channel is None or row['slug'] == channel]
-    destinations = private_storage.publication_destinations(cfg.root)
-    names = sorted({identity for _, _, identity in destinations})
+    names = private_storage.publication_destinations(cfg.root)
     checks = [{'name': 'PRIVATE DATA publication destinations: '+', '.join(names), 'ok': True},
               {'name': 'selected channels exist', 'ok': bool(rows)}]
     checks.extend({'name': row['slug']+' resources', 'ok': row['implemented'] and row['configured']}

@@ -24,6 +24,7 @@ test (E22) asserts the deliverability signal is load-bearing vs a placement-blin
 """
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 _PLACEMENTS = ("inbox", "spam", "missing")
@@ -83,12 +84,23 @@ def warmup_ramp(age_days: float, *, start: float = 20.0, daily_growth: float = 1
     A fresh mailbox therefore CANNOT immediately blast at the steady cap — that is the whole
     point of pool warmup (and what a "no warmup" control gets wrong).
     """
+    if not all(math.isfinite(value) for value in (age_days, start, daily_growth, steady)):
+        raise ValueError("warmup age, start, growth and steady ceiling must be finite")
     if age_days < 0:
         raise ValueError("age_days must be >= 0, got %r" % age_days)
     if start <= 0 or steady <= 0 or daily_growth < 1.0:
         raise ValueError("require start>0, steady>0, daily_growth>=1")
-    ceil = start * (daily_growth ** age_days)
-    return min(float(steady), float(ceil))
+    if start >= steady:
+        return float(steady)
+    if age_days == 0 or daily_growth == 1.0:
+        return float(start)
+    # Compare against the cap before exponentiating; even a finite final ceiling can have
+    # an overflowing growth factor when the starting volume is very small.
+    log_start = math.log(start)
+    log_growth = age_days * math.log(daily_growth)
+    if log_growth >= math.log(steady) - log_start:
+        return float(steady)
+    return min(float(steady), math.exp(log_start + log_growth))
 
 
 def recommend_cap(base_cap: float, *, inbox_rate: float, mailbox_age_days: float,

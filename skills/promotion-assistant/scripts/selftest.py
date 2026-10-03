@@ -189,29 +189,27 @@ def e6():
 def _synthetic_private_metadata(root):
     """Scope the selftest's repository evidence to its temporary synthetic companion."""
     from scripts import private_storage
+    from types import SimpleNamespace
     root = Path(root).resolve()
-    fixture = json.loads((_HERE.parent/'fixtures/promotion.json').read_text())
 
     def repository(existing):
         if not existing.is_relative_to(root):
             raise ValueError('selftest attempted to leave its temporary companion')
         return root
 
-    def metadata(argv):
-        if argv[0] == 'git':
-            if argv[-1:] == ['remote']:
-                return 'origin'
-            if argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
-                return '1'*40
-            if (('get-url' in argv and '--all' in argv and argv[-1] == 'origin')
-                    or argv[-3:] == ['remote', 'get-url', 'origin']):
-                return 'https://github.com/example/synthetic-promotion-config.git'
-            raise AssertionError('unexpected Git metadata query')
-        if argv[0] == 'gh' and argv[1:4] == ['repo', 'view', 'example/synthetic-promotion-config']:
-            return '{"visibility":"PRIVATE","nameWithOwner":"example/synthetic-promotion-config"}'
-        raise AssertionError('unexpected metadata operation')
+    def proof(repo):
+        assert repo == root
+        return SimpleNamespace(root=str(root), repositories=('example/synthetic-promotion-config',),
+                               signature='synthetic-publication')
 
-    with patch.object(private_storage, 'repository', repository), patch.object(private_storage, '_run', metadata):
+    def read(proof, *arguments):
+        assert arguments == ('rev-parse', '--verify', 'HEAD')
+        return SimpleNamespace(returncode=0, stdout='1'*40)
+
+    api = SimpleNamespace(GitError=RuntimeError, prove_private_companion=proof,
+                          read_private_companion_git=read)
+
+    with patch.object(private_storage, 'repository', repository), patch.object(private_storage, '_guard_api', lambda: api):
         yield
 
 
@@ -276,7 +274,7 @@ def e12():
     with tempfile.TemporaryDirectory() as t:
         db = str(Path(t) / "r.db")
         b = ScheduleBridge(db_path=db)
-        b.init()
+        initialized = b.init()
         key = "promotion:test:armA:20260625"
         r1 = b.schedule_item(title="t", due_at="2026-07-01T10:00:00Z", idempotency_key=key,
                              ext={"x_promotion_arm_id": "armA"})
@@ -287,7 +285,9 @@ def e12():
         n = len(items) if isinstance(items, list) else None
         id1 = (r1.get("item") or r1).get("id") if isinstance(r1, dict) else None
         id2 = (r2.get("item") or r2).get("id") if isinstance(r2, dict) else None
-        ok = (n == 1) or (id1 is not None and id1 == id2)
+        ok = (initialized.get('ok') is True and r1.get('ok') is True
+              and r2.get('ok') is True and lst.get('ok') is True
+              and n == 1 and id1 is not None and id1 == id2)
         rec("E12", "idempotent schedule writes (replay = no dup)", ok,
             "items=%s id1=%s id2=%s" % (n, id1, id2))
 

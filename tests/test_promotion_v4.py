@@ -141,67 +141,30 @@ def test_missing_email_helper_can_retry_exact_saved_action(case, monkeypatch):
     assert [payload['idempotency_key'] for payload in calls] == keys
 
 
-def remote_metadata(remotes, visibility):
+def test_shared_admission_failure_stops_storage(case, monkeypatch):
+    api = private_storage._guard_api()
     calls = []
-    def metadata(argv):
-        calls.append(argv)
-        if argv[0] == 'gh':
-            identity = argv[3]
-            value = visibility.get(identity)
-            return json.dumps({'visibility': value, 'nameWithOwner': identity}) if value else '{}'
-        if argv[-1:] == ['remote']:
-            return '\n'.join(remotes)
-        if argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
-            return '1'*40
-        if 'get-url' in argv and '--all' in argv:
-            remote = argv[-1]
-            return '\n'.join(remotes[remote]['push' if '--push' in argv else 'fetch'])
-        raise AssertionError('unexpected synthetic metadata operation')
-    return metadata, calls
-
-
-@pytest.mark.parametrize('placement', ['origin-push', 'second-fetch', 'second-push'])
-@pytest.mark.parametrize('visibility', ['PUBLIC', 'UNKNOWN', None])
-def test_every_effective_remote_endpoint_must_be_private(case, monkeypatch, placement, visibility):
-    primary = 'https://github.com/example/synthetic-promotion-config.git'
-    other = 'https://github.com/example/synthetic-secondary.git'
-    remotes = {'origin': {'fetch': [primary], 'push': [primary]}}
-    if placement == 'origin-push':
-        remotes['origin']['push'].append(other)
-    else:
-        remotes['secondary'] = {'fetch': [primary], 'push': [primary]}
-        remotes['secondary']['fetch' if placement == 'second-fetch' else 'push'] = [other]
-    metadata, calls = remote_metadata(remotes, {'example/synthetic-promotion-config': 'PRIVATE',
-                                                'example/synthetic-secondary': visibility})
-    monkeypatch.setattr(private_storage, '_run', metadata)
-    with pytest.raises(ValueError, match='PUBLIC or unknown'):
+    def refused(repo):
+        calls.append(repo)
+        raise api.GitError('synthetic PUBLIC or unknown route')
+    monkeypatch.setattr(api, 'prove_private_companion', refused)
+    with pytest.raises(ValueError, match='PRIVATE companion verification failed'):
         private_storage.prove(case['root']/'metrics/state.json')
-    assert any(argv[0] == 'gh' and argv[3] == 'example/synthetic-secondary' for argv in calls)
+    assert calls == [case['root']]
 
 
 def test_private_proof_names_all_accepted_destinations_and_is_fresh(case, monkeypatch):
-    primary = 'https://github.com/example/synthetic-promotion-config.git'
-    remotes = {'origin': {'fetch': [primary], 'push': [primary]}}
-    visibility = {'example/synthetic-promotion-config': 'PRIVATE'}
-    metadata, calls = remote_metadata(remotes, visibility)
-    monkeypatch.setattr(private_storage, '_run', metadata)
-    accepted = private_storage.publication_destinations(case['root'])
-    assert accepted == (('origin', 'fetch', 'example/synthetic-promotion-config'),
-                        ('origin', 'push', 'example/synthetic-promotion-config'))
+    api = private_storage._guard_api()
+    assert private_storage.publication_destinations(case['root']) == ('example/synthetic-promotion-config',)
     path = case['root']/'metrics/events.jsonl'
     events.append(path, events.make_event('synthetic', 'drafted'))
     previous = path.read_bytes()
-    visibility['example/synthetic-promotion-config'] = 'PUBLIC'
+    def refused(repo):
+        raise api.GitError('synthetic visibility changed')
+    monkeypatch.setattr(api, 'prove_private_companion', refused)
     with pytest.raises(ValueError):
         events.append(path, events.make_event('synthetic', 'drafted'))
     assert path.read_bytes() == previous
-
-
-@pytest.mark.parametrize('url', ['https://example.com/owner/repo', 'file:///synthetic',
-                                 'https://user@example.com/owner/repo', 'ssh://git@github.com:22/owner/repo'])
-def test_unverifiable_remote_url_is_refused(url):
-    with pytest.raises(ValueError):
-        private_storage._remote_identity(url)
 
 
 def reserve(thr, key, *, policy=None, payload=None, action='post'):

@@ -1,50 +1,37 @@
 """Prove PRIVATE destinations and serialize durable state changes."""
 from contextlib import contextmanager
-import json
+from functools import lru_cache
+import importlib.util
 import os
 from pathlib import Path
 import re
 import stat
-import subprocess
 import tempfile
 import time
-from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def _run(argv):
+@lru_cache(maxsize=1)
+def _guard_api():
+    """Load the pinned kit; only the module is cached, never a PRIVATE proof."""
+    path = ROOT/'guards/tools/data_boundary.py'
     try:
-        env = {key: value for key, value in os.environ.items()
-               if not key.upper().startswith('GIT_') and key.upper() != 'GH_HOST'}
-        env['GIT_OPTIONAL_LOCKS'] = '0'
-        if argv[0] == 'gh':
-            if len(argv) < 4 or argv[:3] != ['gh', 'repo', 'view']:
-                raise ValueError('unsupported companion visibility lookup')
-            # Bind the actual subprocess, including calls from unqualified metadata seams.
-            identity = _remote_identity('https://github.com/'+argv[3])
-            argv = [*argv[:3], 'https://github.com/'+identity, *argv[4:]]
-            env['GH_HOST'] = 'github.com'
-        result = subprocess.run(argv, capture_output=True, text=True, encoding='utf-8',
-                                errors='strict', timeout=20, env=env)
-    except (OSError, UnicodeError, subprocess.SubprocessError) as exc:
-        raise ValueError('PRIVATE companion verification unavailable: '+argv[0]) from exc
-    if result.returncode:
-        raise ValueError('PRIVATE companion verification failed: '+argv[0])
-    return result.stdout.strip()
-
-
-def _git(repo, *args):
-    return _run(['git', '-c', 'core.fsmonitor=false', '-C', str(repo), *args])
+        spec = importlib.util.spec_from_file_location('_promotion_guard_boundary', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if not all(callable(getattr(module, name, None)) for name in (
+                'prove_private_companion', 'read_private_companion_git', 'GitError')):
+            raise ValueError('pinned Guards kit lacks the supported companion API')
+    except (OSError, ImportError, AttributeError) as exc:
+        raise ValueError('pinned Guards companion API is unavailable; initialize its submodule') from exc
+    return module
 
 
 def repository(existing):
     for candidate in (existing, *existing.parents):
         if os.path.lexists(candidate/'.git'):
-            root = Path(_git(candidate, 'rev-parse', '--show-toplevel')).resolve()
-            if root != candidate:
-                raise ValueError('invalid or nested Git worktree boundary')
-            return root
+            return candidate
     raise ValueError('runtime data requires a versioned PRIVATE Git companion')
 
 
@@ -60,55 +47,12 @@ def _file_guard(path):
         raise ValueError('runtime destination is not a regular file or directory')
 
 
-def _remote_identity(remote):
-    if remote.startswith(('https://', 'ssh://')):
-        value = urlsplit(remote)
-        if (value.password or value.query or value.fragment or value.port is not None
-                or (value.scheme == 'https' and value.username is not None)
-                or (value.scheme == 'ssh' and value.username not in (None, 'git'))):
-            raise ValueError('unsupported companion publication URL')
-        host, name = value.hostname, value.path.lstrip('/')
-    else:
-        match = re.fullmatch(r'(?:[^@/:\s]+@)?([^/:\s]+):([^\s]+)', remote)
-        if not match:
-            raise ValueError('unverifiable companion publication URL')
-        host, name = match.groups()
-    if host != 'github.com':
-        raise ValueError('companion publication host must identify GitHub')
-    name = name.removesuffix('.git')
-    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', name):
-        raise ValueError('invalid companion repository identity')
-    return name
-
-
 def publication_destinations(repo):
-    """Git expands URL rewrites; every effective fetch and push URL must be PRIVATE."""
-    remotes = _git(repo, 'remote').splitlines()
-    if 'origin' not in remotes or len(remotes) != len(set(remotes)):
-        raise ValueError('PRIVATE companion requires an origin and unambiguous remotes')
-    accepted = []
-    for remote in sorted(remotes):
-        if not remote or remote.startswith('-') or any(char.isspace() for char in remote):
-            raise ValueError('invalid companion remote name')
-        for direction in ('fetch', 'push'):
-            flags = ['--push'] if direction == 'push' else []
-            urls = _git(repo, 'remote', 'get-url', *flags, '--all', remote).splitlines()
-            if not urls:
-                raise ValueError('companion publication URL is missing')
-            for url in urls:
-                identity = _remote_identity(url)
-                answer = json.loads(_run(['gh', 'repo', 'view', identity,
-                                          '--json', 'nameWithOwner,visibility']))
-                if (not isinstance(answer, dict) or answer.get('visibility') != 'PRIVATE'
-                        or not isinstance(answer.get('nameWithOwner'), str)
-                        or answer['nameWithOwner'].lower() != identity.lower()):
-                    raise ValueError('companion publication destination is PUBLIC or unknown')
-                accepted.append((remote, direction, identity))
-    return tuple(accepted)
+    """Return freshly verified PRIVATE repository identities from the shared policy."""
+    return _prove(repo)[1].repositories
 
 
-def prove(requested):
-    """Fresh publication authority is established for each operation, never cached."""
+def _prove(requested):
     path = Path(requested).expanduser()
     parts = path.parts[1:] if path.is_absolute() else path.parts
     if any(part.lower() == '.git' or ':' in part or part.endswith((' ', '.')) for part in parts):
@@ -124,11 +68,22 @@ def prove(requested):
     repo = repository(existing.parent if existing.is_file() else existing)
     if ROOT.is_relative_to(repo) or repo.is_relative_to(ROOT) or not path.is_relative_to(repo):
         raise ValueError('runtime data requires a separate companion')
-    commit = _git(repo, 'rev-parse', '--verify', 'HEAD')
+    api = _guard_api()
+    try:
+        proof = api.prove_private_companion(repo)
+        if Path(proof.root) != repo:
+            raise ValueError('invalid or nested Git worktree boundary')
+        commit = api.read_private_companion_git(proof, 'rev-parse', '--verify', 'HEAD').stdout.strip()
+    except api.GitError as exc:
+        raise ValueError('PRIVATE companion verification failed; check its receipt and Git configuration') from exc
     if not re.fullmatch(r'[0-9a-fA-F]{40}|[0-9a-fA-F]{64}', commit):
         raise ValueError('companion must have a committed versioned history')
-    publication_destinations(repo)
-    return path
+    return path, proof
+
+
+def prove(requested):
+    """Fresh publication authority is established for each operation, never cached."""
+    return _prove(requested)[0]
 
 
 def _read_current(path, missing=None):
@@ -178,7 +133,7 @@ def _replace(path, payload):
         raise ValueError('runtime state transform must return text')
     temporary = None
     try:
-        checked = prove(path)
+        checked, before = _prove(path)
         if checked != path:
             raise ValueError('runtime state destination changed')
         descriptor, name = tempfile.mkstemp(prefix='.'+path.name+'-', dir=path.parent)
@@ -187,7 +142,9 @@ def _replace(path, payload):
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        if prove(path) != path:
+        checked, after = _prove(path)
+        if (checked != path or (after.root, after.repositories, after.signature) !=
+                (before.root, before.repositories, before.signature)):
             raise ValueError('runtime state destination changed')
         os.replace(temporary, path)
         temporary = None

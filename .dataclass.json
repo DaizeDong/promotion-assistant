@@ -26,7 +26,12 @@
     "tests/test_expansion.py",
     "tests/test_roadmap_deeper.py",
     "skills/promotion-assistant/scripts/selftest.py",
-    "tests/fixtures/sample_events.jsonl"
+    "tests/fixtures/sample_events.jsonl",
+    "tests/test_schedule_integration.py",
+    "tests/test_community_readiness.py",
+    "tests/test_warmup_limits.py",
+    "tests/test_participation.py",
+    "tests/test_private_storage_shared.py"
   ],
   "_data_home": "The authoritative Config root, selected explicitly or with PROMO_CONFIG_DIR and its documented aliases. Config requires a separate versioned PRIVATE GitHub companion; no source-tree or unversioned fallback is allowed."
 }

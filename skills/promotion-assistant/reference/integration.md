@@ -3,12 +3,24 @@
 ## schedule-reminder (the only scheduling surface)
 `scripts/schedule_bridge.py` shells out to the schedule-reminder base CLI (`reminder.py <verb>` with the arguments listed in the bridge; its path is resolved from `$PROMO_REMINDER_PY`, default a generic per-tool location) and
 requires JSON stdout. It does not pass `--json`; setup must verify installed helper compatibility.
+Set `PROMO_REMINDER_PY` to the installed helper and run `python "$PROMO_REMINDER_PY" ensure --help`.
+For managed installations, use the current runtime's Python and helper path. Initialize the store
+with `python "$PROMO_REMINDER_PY" init`. Promotion uses that same Python interpreter for the bridge.
+Creation calls `creation-preflight`, checks that the scan completed, then calls `ensure` with the
+same fields. It passes no review overrides: ambiguous new obligations return `ERR_CREATION_REVIEW`
+for operator review, while an unchanged request can replay even after its task is completed.
 NEVER read its `.db` or build SQL. Each promo item:
 - `--source promotion-assistant`
 - `--idempotency-key promotion:<sha256 of product/campaign/arm/channel/account/action/date>` (same obligation/date retries use the same key; E12 requires an available compatible helper)
 - `--ext '{"x_promotion_campaign_id":..,"x_promotion_arm_id":..,"x_promotion_channel":..,"x_promotion_utm":..}'`
 - `--due-at <ISO>` drives the human-paced cadence; `transition` records funnel progress.
 Cross-channel dependencies use `block/--blocker-id`. Do not assume the installed helper supports a flag or receipt format without checking it.
+
+The first `plan` saves each complete request under the PRIVATE companion's
+`metrics/schedule-requests/` before invoking the helper. Same-date retries preserve that request's
+original due time and identity. Changed content or damaged saved requests stop with
+`ERR_SCHEDULE_CHANGED`; inspect the saved request and existing reminder before changing the plan.
+For an intentional date change, update or snooze the existing reminder instead of creating a copy.
 
 ## Alerts (Discord relay, one-way Claude→phone)
 Periodic `due` reminders ride schedule-reminder's own tick/relay. `scripts/alert.py` is ONLY for

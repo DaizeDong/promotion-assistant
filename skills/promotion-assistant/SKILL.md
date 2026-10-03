@@ -66,7 +66,7 @@ python scripts/cli.py run  --campaign <C> --once  # gated dispatch (DRY-RUN by d
 python scripts/cli.py prep --campaign <C> [--channel X]   # manual-prep: human-postable copy+checklist
 python scripts/cli.py participate discover --sub <S>      # find relevant source threads
 python scripts/cli.py participate draft --url <source-thread> --title .. --body ..
-python scripts/cli.py participate status --age-days N --karma N  # review participation readiness
+python scripts/cli.py participate status --sub <community> --age-days N --karma N  # review participation readiness
 python scripts/cli.py participate record --url <comment-permalink> --thread <source-thread> --type give|ask [--draft-id <draft-id>]
 python scripts/cli.py authorize --channel <X>     # the exact per-channel live-unlock steps
 python scripts/cli.py report --funnel | --bandit  # funnel + arm convergence

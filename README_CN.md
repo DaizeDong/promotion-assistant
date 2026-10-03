@@ -39,11 +39,24 @@ Sampling bandit。所有产品文案/受众/凭证都放在「独立私有 confi
 或手动克隆:
 
 ```bash
-git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+cd ~/.claude/plugins/promotion-assistant
 ```
 
 然后建一个「每产品 config 仓」(fork `companion config kit` 模板，Mode B secrets)并指向它:
 `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`。
+
+需要 Python 3.11 以上、Git，以及 `~/.pii-guard/visibility.json` 中未过期的 PRIVATE 可见性回执。
+运行时由固定版本的 Guards API 核验本地回执和 Git 配置，不会调用 `gh` 或自动刷新回执。
+回执缺失或过期时，请先按[伴生仓约定](guards/COMPANION.md#verifying-a-companion)完成初始化或刷新。
+JSON 配置不需要额外 Python 包，YAML 配置还需 PyYAML。下面的命令从克隆后的仓库目录开始运行。
+提醒功能需设置 `PROMO_REMINDER_PY`，指向已安装的 `reminder.py`；先运行
+`python "$PROMO_REMINDER_PY" ensure --help` 检查接口，再用 `init` 初始化本地存储。
+托管安装应使用当前运行环境的 Python 和提醒脚本，只有旧 `add` 命令的版本不兼容。
+
+`python scripts/cli.py --config /path/to/private-companion init` 用于检查已有配置，
+`--config` 要放在子命令前。创建配置骨架用 `init_config.py --out`；填好配置并在独立私有仓提交后，
+`verify_config.py` 才能报告 ready。
 
 ## 快速开始
 

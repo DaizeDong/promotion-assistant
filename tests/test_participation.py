@@ -88,7 +88,7 @@ def test_readiness_new_account_not_ready():
 
 def test_readiness_seasoned_account_ready():
     rd = P.readiness({"age_days": 30, "karma": 80, "sub_gives": 5, "mod_strikes": 0},
-                     [{"type": "give"}] * 9 + [{"type": "ask"}])
+                     [{"type": "give"}] * 18 + [{"type": "ask"}])
     assert rd["ready"] is True
     assert rd["met"] == rd["total"]
 

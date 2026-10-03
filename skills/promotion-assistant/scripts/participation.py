@@ -265,8 +265,9 @@ def readiness(account: dict, ledger_entries, *, min_age_days=14, min_karma=50,
          "karma >= %d (have: %s)" % (min_karma, karma)),
         ("in_community_gives", sub_gives is not None and sub_gives >= min_sub_gives,
          "in-community accepted non-promo contributions >= %d (have: %s)" % (min_sub_gives, sub_gives)),
-        ("ledger_9to1", lb["holds_9to1"],
-         "give:ask ratio holds 9:1 (have: %s gives / %s asks)" % (lb["gives"], lb["asks"])),
+        ("ledger_9to1", lb["next_ask_ok"],
+         "next promotional post preserves give:ask >= 9:1 (have: %s gives / %s asks)"
+         % (lb["gives"], lb["asks"])),
         ("no_strikes", strikes == 0,
          "zero mod removals/strikes (have: %s)" % strikes),
     ]
@@ -341,8 +342,35 @@ def thread_identity(url):
     return canonical
 
 
-def confirmed_entries(rows):
-    """Only confirmed human publications with an explicit final give/ask count toward readiness."""
+def normalize_community(community):
+    """Accept a Reddit community name, r/name or /r/name, without URL/path ambiguity."""
+    name = community.strip().lower() if isinstance(community, str) else ''
+    if name.startswith('/r/'):
+        name = name[3:]
+    elif name.startswith('r/'):
+        name = name[2:]
+    name = name.removesuffix('/')
+    if not re.fullmatch(r'[a-z0-9_]+', name):
+        raise ValueError('a subreddit name is required (name or r/name)')
+    return name
+
+
+def _permalink_community(url):
+    from urllib.parse import urlsplit
+    parsed = urlsplit(url)
+    if parsed.hostname not in {'reddit.com', 'www.reddit.com', 'old.reddit.com', 'np.reddit.com'}:
+        return None
+    match = re.fullmatch(r'/r/([A-Za-z0-9_]+)/comments/[A-Za-z0-9]+(?:/.*)?', parsed.path)
+    return match.group(1).lower() if match else None
+
+
+def confirmed_entries(rows, *, community=None):
+    """Confirmed human give/ask publications, optionally scoped to one Reddit community.
+
+    Legacy permalinks without a recognizable community remain available in the unfiltered
+    history, but cannot establish readiness in any community. Stored thread identity is retained.
+    """
+    target = normalize_community(community) if community is not None else None
     entries = {}
     for row in rows:
         if (row.get('channel') != 'reddit-participation' or row.get('event_type') != 'sent'
@@ -350,8 +378,9 @@ def confirmed_entries(rows):
                 or row.get('participation_type') not in {'give', 'ask'}):
             continue
         url = canonical_permalink(row.get('post_url'))
-        entry = {'type': row['participation_type'], 'url': url, 'ts': row.get('ts')}
+        entry = {'type': row['participation_type'], 'url': url, 'ts': row.get('ts'),
+                 'community': _permalink_community(url), 'thread': row.get('thread')}
         if url in entries and entries[url]['type'] != entry['type']:
             raise ValueError('one participation permalink has conflicting give/ask classifications')
         entries.setdefault(url, entry)
-    return list(entries.values())
+    return [entry for entry in entries.values() if target is None or entry['community'] == target]

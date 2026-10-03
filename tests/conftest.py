@@ -61,13 +61,15 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def synthetic_private_metadata(monkeypatch):
+def synthetic_private_metadata(monkeypatch, request):
     # The same controls also run against the immutable pre-change source.
     import importlib.util
     if importlib.util.find_spec('scripts.private_storage') is None:
         return
     from scripts import private_storage
     actual_repository = private_storage.repository
+    if "native_storage" in request.fixturenames:
+        return actual_repository
 
     def repository(existing):
         if not existing.is_relative_to(_temporary):
@@ -75,20 +77,19 @@ def synthetic_private_metadata(monkeypatch):
         return next((node for node in (existing, *existing.parents)
                      if (node/'product.json').is_file() or (node/'.git').exists()), existing)
 
-    def metadata(argv):
-        if argv[0] == 'git':
-            if argv[-1:] == ['remote']:
-                return 'origin'
-            if argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
-                return '1'*40
-            if (('get-url' in argv and '--all' in argv and argv[-1] == 'origin')
-                    or argv[-3:] == ['remote', 'get-url', 'origin']):
-                return 'https://github.com/example/synthetic-promotion-config.git'
-            raise AssertionError('unexpected Git metadata query')
-        if argv[0] == 'gh' and argv[1:4] == ['repo', 'view', 'example/synthetic-promotion-config']:
-            return '{"visibility":"PRIVATE","nameWithOwner":"example/synthetic-promotion-config"}'
-        raise AssertionError('unexpected metadata operation')
+    from types import SimpleNamespace
+
+    def proof(repo):
+        return SimpleNamespace(root=str(repo), repositories=('example/synthetic-promotion-config',),
+                               signature='synthetic-publication')
+
+    def read(proof, *arguments):
+        assert arguments == ('rev-parse', '--verify', 'HEAD')
+        return SimpleNamespace(returncode=0, stdout='1'*40)
+
+    api = SimpleNamespace(GitError=RuntimeError, prove_private_companion=proof,
+                          read_private_companion_git=read)
 
     monkeypatch.setattr(private_storage, 'repository', repository)
-    monkeypatch.setattr(private_storage, '_run', metadata)
+    monkeypatch.setattr(private_storage, '_guard_api', lambda: api)
     return actual_repository

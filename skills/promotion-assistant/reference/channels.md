@@ -28,6 +28,9 @@ navigation variance, interaction texture. Random delay only changes timing, not 
 stop a week. **Discord/Telegram: official bot + own channels only**; selfbot/cross-server stranger
 auto-DM = instant ban. IG/LinkedIn auto-DM = deferred (IG 2026: ~200/hr, 1 DM/user/24h).
 
-The local registry (`scripts/providers.py:build_registry`) currently ships **email** and **own-server
-Discord** as `LIVE_TRANSPORT` paths (both still gated behind per-channel authorize); mastodon /
-bluesky / reddit / x / janitorai-card / producthunt / hackernews are registered **deferred-gaps**.
+The local registry (`scripts/providers.py:build_registry`) ships **email**, **own-server Discord**,
+**Mastodon** and **Bluesky** as `LIVE_TRANSPORT` paths, all gated by product and per-channel
+authorization plus their transport prerequisites. Implemented adapters and local tests do not
+establish real publication; live acceptance requires confirmed provider receipts from the
+configured owned account. Reddit, JanitorAI-card, Product Hunt and Hacker News use implemented
+manual preparation paths, with publication performed by a human. X remains a **deferred-gap**.

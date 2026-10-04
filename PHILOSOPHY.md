@@ -14,12 +14,12 @@ underneath* one of those failures, not the symptom on top.
   the *values* (caps, audiences, copy, thresholds) drift constantly. So they must live in different
   places.
 - **Decision it produced:** a product-agnostic public skill + a private per-product config repo
-  (`PROMO_CONFIG_DIR`). Quotas come from runtime response headers, not a baked table.
+  (`PROMO_CONFIG_DIR`). Per-channel policy supplies limits, and observed rate-limit responses inform throttling.
 
 ## P2, Compliance is engineering, not goodwill
 - **Symptom patch:** a checklist and a "please remember to add an unsubscribe link."
 - **Root cause:** anything left to discipline eventually leaks; the only reliable control is a gate
-  that *cannot be bypassed*.
+  on every supported live dispatch path; deployment still needs independent validation.
 - **Decision it produced:** a fail-closed compliance gate (CAN-SPAM/GDPR/suppression) on the send
   path, and ban/spam/unsub encoded as **strong-negative reward** so the optimizer internalizes the
   red-lines instead of needing an external rule patch for every new evasion.
@@ -30,15 +30,15 @@ underneath* one of those failures, not the symptom on top.
   state must be the one you fall into when you do nothing.
 - **Decision it produced:** a single `dispatch()` exit that fail-closed requires
   `send_mode=="live"` AND a per-channel authorize token; absent either, it runs the full pipeline and
-  writes simulated events + `dry-run.jsonl` with zero network egress. The metrics loop trains without
-  ever sending.
+  writes private simulated events and previews without provider dispatch. Those records exercise
+  orchestration and cannot establish delivery or real conversion.
 
 ## P4, Own the seam, delegate the engines
 - **Symptom patch:** reimplement scheduling, notification and SMTP inside the skill.
 - **Root cause:** those are solved bases on this machine; duplicating them creates drift and bugs.
 - **Decision it produced:** scheduling → the `schedule-reminder` CLI contract (never its DB), alerts →
-  the existing Discord relay, email → the machine's `send-gmail.ps1`. The skill owns the promotion
-  logic; nothing else.
+  the configured Discord relay, email → an explicitly configured helper implementing the complete
+  `reviewed-email-v1` request and receipt contract. A legacy helper alone does not make email ready.
 
 ## P5, Proven, not generated
 - **Symptom patch:** "the code looks right."

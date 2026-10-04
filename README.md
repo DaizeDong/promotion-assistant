@@ -11,17 +11,24 @@ Multi-channel product promotion that quantifies its own funnel and self-tunes, d
 
 ---
 
-## ⭐ Read this first, the design philosophy
+## Design Philosophy
 
-**Methodology is constant, signals adapt; compliance is engineering not goodwill; dry-run is the
-default, not an option.** The channel matrix, six-layer funnel, bandit and compliance gate are fixed
-method; every platform limit, audience and piece of copy lives in a per-product config repo. No
-outbound action ever leaves the machine unless the product is explicitly set live **and** that
-channel is individually authorized, the safe state is the one you fall into by doing nothing.
+Promotion policy changes with the product and channel, while the funnel, selection rule and
+dispatch checks can remain stable. The tool therefore keeps reusable orchestration in the public
+repository and product copy, audiences and operational records in a PRIVATE companion. This adds
+configuration work, but lets a channel policy change without embedding a real campaign in the tool.
 
-📜 **[Read the full design philosophy -> PHILOSOPHY.md](PHILOSOPHY.md)**
+Every destination needs a complete reviewed payload, consent and suppression checks, and explicit
+channel authorization before live dispatch. Dry runs preserve previews and simulated events for
+review. A simulation cannot prove delivery, and an uncertain provider response must be reconciled
+before retrying. These restrictions trade unattended convenience for control over irreversible outreach.
 
----
+The bandit uses recorded feedback, so event identity and attribution matter as much as the selection
+formula. Durable run and observation receipts let retries reuse the same decision without knowingly
+crediting the same observation twice. Synthetic checks can verify this bookkeeping; account setup,
+provider acceptance and actual conversion remain separate evidence.
+
+[Read the full design philosophy](PHILOSOPHY.md).
 
 ## What it is (and isn't)
 

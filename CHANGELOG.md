@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here (Keep a Changelog style).
 
+## [Unreleased]
+
+### Added
+- Owned-account Mastodon and Bluesky adapters with identity checks and matching provider receipts; registered manual surfaces retain preparation workflows.
+- Durable reviewed runs with per-destination payloads, delivery state and resume behavior.
+
+### Changed
+- Email requires the complete `reviewed-email-v1` helper request and receipt contract; a legacy helper or message ID alone is insufficient.
+- Verify a separate PRIVATE companion with committed history through the pinned Guards API and its current visibility receipt.
+- Credit linked observations using durable identities and receipts, preserving prior learning when migrating legacy state.
+- Clarify the tradeoffs behind private configuration, reviewed dispatch and evidence-based feedback.
+
+### Fixed
+- Align the engine package version with the existing 0.1.3 plugin and documentation declarations.
+
 ## [0.1.3] - 2026-07-18
 ### Added
 - **Discord own-server live transport (was a deferred-gap).** `DiscordOwnServerProvider.publish`

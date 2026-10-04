@@ -2,7 +2,13 @@
 
 Current: **v0.1.3**
 
-## v0.1.3 (current)
+## Current main
+
+The declared release remains v0.1.3. [Unreleased changes](CHANGELOG.md#unreleased) record the
+later durable run/resume protocol, reviewed email contract, owned-account adapters and private
+storage requirements. Synthetic checks do not establish live publication.
+
+## v0.1.3
 - Discord own-server live transport, previously a deferred gap: `DiscordOwnServerProvider.publish`
   posts one announce message via the Discord REST API in live mode. Credentials come from the
   environment, never the repo, and the two-switch fail-closed gate is unchanged. A 429 maps to

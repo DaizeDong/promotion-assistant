@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "tool": "promotion-assistant",
+  "artifacts": [
+    {
+      "artifact_id": "readme",
+      "path_pattern": "README.md",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "exclusions",
+      "path_pattern": ".gitignore",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "product",
+      "path_pattern": "product.json",
+      "purpose": "Product identity, content constraints and global send gate.",
+      "schema": "CONFIG.md product schema_version 1; skills/promotion-assistant/scripts/config.py.",
+      "producer": "Companion maintainer or skills/promotion-assistant/scripts/init_config.py.",
+      "consumer_or_final_deliverable": "skills/promotion-assistant/scripts/config.py, compliance checks and frozen run scope.",
+      "rebuild_or_restore": "Restore the approved private configuration.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep the current product definition while campaigns, compliance or recovery depend on it."
+      }
+    },
+    {
+      "artifact_id": "registry",
+      "path_pattern": "registry.json",
+      "purpose": "Registered channel identities and per-channel authorization references.",
+      "schema": "CONFIG.md registry schema_version 1; skills/promotion-assistant/scripts/config.py.",
+      "producer": "Companion maintainer or skills/promotion-assistant/scripts/init_config.py.",
+      "consumer_or_final_deliverable": "Channel selection, capability doctor and frozen run scope.",
+      "rebuild_or_restore": "Restore reviewed channel identities; revalidate credentials independently.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep current channels and any identities needed to reconcile outstanding runs."
+      }
+    },
+    {
+      "artifact_id": "channel_policy",
+      "path_pattern": "channels/*/policy.json",
+      "purpose": "Per-channel pacing and throttle rules.",
+      "schema": "CONFIG.md; skills/promotion-assistant/scripts/throttle.py.",
+      "producer": "Companion maintainer.",
+      "consumer_or_final_deliverable": "Admission, cooldown and warmup calculations.",
+      "rebuild_or_restore": "Restore the approved rules without resetting live throttle state.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep policies for active channels and unresolved runs."
+      }
+    },
+    {
+      "artifact_id": "audiences",
+      "path_pattern": "audiences.json",
+      "purpose": "Private audience definitions and addressed recipient segments.",
+      "schema": "CONFIG.md; skills/promotion-assistant/scripts/config.py: audiences; skills/promotion-assistant/scripts/runs.py: expand.",
+      "producer": "Companion maintainer.",
+      "consumer_or_final_deliverable": "Campaign planning; addressed dispatch requires segments containing recipient and recipient_country.",
+      "rebuild_or_restore": "Restore private definitions; never invent recipient rows during migration.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep definitions used by current campaigns. Remove obsolete segments only after outstanding frozen runs and consent obligations are accounted for."
+      }
+    },
+    {
+      "artifact_id": "campaigns",
+      "path_pattern": "copy/*.json",
+      "purpose": "Approved campaign arms and content.",
+      "schema": "skills/promotion-assistant/scripts/config.py: copy; CONFIG.md campaign arm contract.",
+      "producer": "Companion maintainer and approved content workflow.",
+      "consumer_or_final_deliverable": "skills/promotion-assistant/scripts/runs.py and campaign planning.",
+      "rebuild_or_restore": "Restore the selected private campaign version.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep selected campaigns and arms referenced by retained runs or observations; retire unused drafts after review."
+      }
+    },
+    {
+      "artifact_id": "consent",
+      "path_pattern": "compliance/consent-ledger.jsonl",
+      "purpose": "Lawful-basis and withdrawal records.",
+      "schema": "skills/promotion-assistant/scripts/compliance.py: load_consent_ledger; CONFIG.md latest-row semantics.",
+      "producer": "Authorized consent maintenance.",
+      "consumer_or_final_deliverable": "Dispatch and resume eligibility checks.",
+      "rebuild_or_restore": "Restore the full required sequence so the latest decision is preserved.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep while any addressed activity or continuing compliance obligation depends on the records. Never delete a withdrawal to enable sending."
+      }
+    },
+    {
+      "artifact_id": "suppression",
+      "path_pattern": "metrics/suppression.csv",
+      "purpose": "Recipient exclusions.",
+      "schema": "skills/promotion-assistant/scripts/compliance.py: load_suppression.",
+      "producer": "Authorized suppression maintenance.",
+      "consumer_or_final_deliverable": "Every dispatch and resume eligibility check.",
+      "rebuild_or_restore": "Restore current exclusions before enabling addressed activity.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep applicable exclusions while the product may contact those recipients; retire only when the corresponding contact activity and obligations end."
+      }
+    },
+    {
+      "artifact_id": "events",
+      "path_pattern": "metrics/events.jsonl",
+      "purpose": "Delivery outcomes and observations used by attribution and learning.",
+      "schema": "skills/promotion-assistant/scripts/events.py: validate_event and read; skills/promotion-assistant/scripts/learning.py.",
+      "producer": "Dispatch and authorized observation ingestion.",
+      "consumer_or_final_deliverable": "Metrics views, bandit learning and retained run reconciliation.",
+      "rebuild_or_restore": "Restore required event IDs and their matching run decisions.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep events required for current posterior state, deduplication, selected metrics or unresolved outcomes. Retire only after those dependencies are explicitly ended or replaced by a validated sufficient state."
+      }
+    },
+    {
+      "artifact_id": "previews",
+      "path_pattern": "metrics/dry-run.jsonl",
+      "purpose": "Would-send payloads and eligibility from previews.",
+      "schema": "skills/promotion-assistant/scripts/dispatch.py; CONFIG.md dry-log contract.",
+      "producer": "skills/promotion-assistant/scripts/dispatch.py.",
+      "consumer_or_final_deliverable": "The active campaign review or a specifically selected diagnostic.",
+      "rebuild_or_restore": "Regenerate from approved inputs when exact historical payload evidence is not required.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Remove completed previews after their review or diagnosis ends and no retained run or selected deliverable references them."
+      }
+    },
+    {
+      "artifact_id": "bandit",
+      "path_pattern": "metrics/bandit-state.json",
+      "purpose": "Posterior state and credited observation identities.",
+      "schema": "skills/promotion-assistant/scripts/bandit.py and skills/promotion-assistant/scripts/learning.py.",
+      "producer": "Bandit updates and observation ingestion.",
+      "consumer_or_final_deliverable": "Future campaign selection and idempotent learning.",
+      "rebuild_or_restore": "Restore the state with required credited event identities, or perform a separately validated rebuild.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep while campaign selection or deduplication uses this state; do not discard credits merely because raw logs are large."
+      }
+    },
+    {
+      "artifact_id": "throttle",
+      "path_pattern": "metrics/throttle-state.json",
+      "purpose": "Shared admission reservations, pacing and cooldown.",
+      "schema": "skills/promotion-assistant/scripts/throttle.py state validation.",
+      "producer": "skills/promotion-assistant/scripts/throttle.py.",
+      "consumer_or_final_deliverable": "All production admissions and safe retries.",
+      "rebuild_or_restore": "Restore before dispatch; losing reservations is not a safe reset.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep while active channels or retries can depend on reservations and cooldowns. Retire only after dispatch is stopped and all relevant windows and outcomes are resolved."
+      }
+    },
+    {
+      "artifact_id": "runs",
+      "path_pattern": "metrics/runs/*.json",
+      "purpose": "Frozen intent, idempotency identity and per-item delivery receipts.",
+      "schema": "skills/promotion-assistant/scripts/runs.py: validate; CONFIG.md run/resume contract.",
+      "producer": "skills/promotion-assistant/scripts/runs.py.",
+      "consumer_or_final_deliverable": "Resume, reconciliation and delayed observation credit.",
+      "rebuild_or_restore": "Restore exact run records with matching events and state.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep unresolved runs and all runs referenced by retained observations or required delivery evidence. Completed runs may retire only after these dependencies end."
+      }
+    },
+    {
+      "artifact_id": "locks",
+      "path_pattern": "metrics/**/*.lock",
+      "purpose": "Exclusive writers and unresolved transaction markers.",
+      "schema": "skills/promotion-assistant/scripts/runs.py: lock; skills/promotion-assistant/scripts/private_storage.py: exclusive.",
+      "producer": "Run and state persistence.",
+      "consumer_or_final_deliverable": "Concurrent writer exclusion and recovery.",
+      "rebuild_or_restore": "Reconcile commit and provider outcomes before removing stale locks.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep while a writer is active or the transaction outcome is unresolved."
+      }
+    },
+    {
+      "artifact_id": "credentials",
+      "path_pattern": "secrets/*.env",
+      "purpose": "Currently provisioned channel credentials.",
+      "schema": "CONFIG.md; selected provider or email-helper contract.",
+      "producer": "Authorized credential provisioning.",
+      "consumer_or_final_deliverable": "The selected channel adapter or external credential bridge.",
+      "rebuild_or_restore": "Restore via the approved private credential backup or reauthorize.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep current credentials required by active channels or recovery; remove replaced credentials only after rotation is confirmed."
+      }
+    },
+    {
+      "artifact_id": "generated_reference_0",
+      "path_pattern": "*/.gitkeep",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "generated_reference_1",
+      "path_pattern": "secrets/README.md",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "generated_reference_2",
+      "path_pattern": "secrets/*.env.template",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "generated_reference_3",
+      "path_pattern": "scripts/apply.README.md",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "generated_reference_4",
+      "path_pattern": "runbooks/*.md",
+      "purpose": "Companion setup metadata linking to the source contract.",
+      "schema": "DATA.md and the source initializer, when present.",
+      "producer": "Companion maintainer or source initializer.",
+      "consumer_or_final_deliverable": "Companion discovery and restore instructions.",
+      "rebuild_or_restore": "Recreate from current source documentation.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Keep only the minimal current setup instructions and exclusions; replace obsolete copies."
+      }
+    },
+    {
+      "artifact_id": "audiences_yaml",
+      "path_pattern": "audiences.yaml",
+      "purpose": "Private audience definitions and addressed recipient segments.",
+      "schema": "CONFIG.md; skills/promotion-assistant/scripts/config.py: audiences; skills/promotion-assistant/scripts/runs.py: expand.",
+      "producer": "Companion maintainer.",
+      "consumer_or_final_deliverable": "Campaign planning; addressed dispatch requires segments containing recipient and recipient_country.",
+      "rebuild_or_restore": "Restore private definitions; never invent recipient rows during migration.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep definitions used by current campaigns. Remove obsolete segments only after outstanding frozen runs and consent obligations are accounted for."
+      }
+    },
+    {
+      "artifact_id": "campaigns_yaml",
+      "path_pattern": "copy/*.yaml",
+      "purpose": "Approved campaign arms and content.",
+      "schema": "skills/promotion-assistant/scripts/config.py: copy; CONFIG.md campaign arm contract.",
+      "producer": "Companion maintainer and approved content workflow.",
+      "consumer_or_final_deliverable": "skills/promotion-assistant/scripts/runs.py and campaign planning.",
+      "rebuild_or_restore": "Restore the selected private campaign version.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep selected campaigns and arms referenced by retained runs or observations; retire unused drafts after review."
+      }
+    }
+  ],
+  "protected_paths": [
+    "metrics/**/*.lock"
+  ]
+}

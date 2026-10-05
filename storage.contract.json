@@ -300,6 +300,45 @@
         "class": "core",
         "rule": "Keep selected campaigns and arms referenced by retained runs or observations; retire unused drafts after review."
       }
+    },
+    {
+      "artifact_id": "state_staging",
+      "path_pattern": "metrics/.*.json-*",
+      "purpose": "Exclusive temporary bytes before atomic runtime state publication.",
+      "schema": "skills/promotion-assistant/scripts/private_storage.py: _replace",
+      "producer": "The active runtime state writer.",
+      "consumer_or_final_deliverable": "The current atomic replacement transaction.",
+      "rebuild_or_restore": "Reconstruct only from reconciled final state and retained inputs after checking whether the previous replacement committed.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Normal completion removes staging files. After interruption, remove only after the writer stops and the final state, required inputs and commit outcome are known."
+      }
+    },
+    {
+      "artifact_id": "event_staging",
+      "path_pattern": "metrics/.*.jsonl-*",
+      "purpose": "Exclusive temporary bytes before atomic runtime state publication.",
+      "schema": "skills/promotion-assistant/scripts/private_storage.py: _replace",
+      "producer": "The active runtime state writer.",
+      "consumer_or_final_deliverable": "The current atomic replacement transaction.",
+      "rebuild_or_restore": "Reconstruct only from reconciled final state and retained inputs after checking whether the previous replacement committed.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Normal completion removes staging files. After interruption, remove only after the writer stops and the final state, required inputs and commit outcome are known."
+      }
+    },
+    {
+      "artifact_id": "run_staging",
+      "path_pattern": "metrics/runs/.*.json*",
+      "purpose": "Exclusive temporary bytes before atomic runtime state publication.",
+      "schema": "skills/promotion-assistant/scripts/runs.py: save",
+      "producer": "The active runtime state writer.",
+      "consumer_or_final_deliverable": "The current atomic replacement transaction.",
+      "rebuild_or_restore": "Reconstruct only from reconciled final state and retained inputs after checking whether the previous replacement committed.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Normal completion removes staging files. After interruption, remove only after the writer stops and the final state, required inputs and commit outcome are known."
+      }
     }
   ],
   "protected_paths": [

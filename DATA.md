@@ -25,8 +25,17 @@ that is selected evidence or still referenced.
 Current credential files belong only in approved private storage and need an explicit
 backup or reauthorization route. Initializer templates and copied runbooks are
 rebuildable setup references. The source owns the current operating instructions;
-a companion needs only a short README linking here. Legacy MCP bridge scripts with
-no matching channel templates do not provision current adapters.
+a companion needs a current README linking here. The selected apply command
+delegates to the exact companion `scripts/apply.py`, and current provisioning
+instructions select `scripts/capture-key.ps1`; preserve these helpers while
+those interfaces depend on them. A missing template directory still prevents
+provisioning, so retention does not establish a working credential bridge.
+
+The exact `scripts/verify.sh` is a retired MCP registry verifier. Current
+restoration uses the source doctor and companion `apply.py --verify`. Its retired
+classification does not authorize deletion. Legacy compliance policies, consent
+templates and operator documents require separate review of their obligations;
+a template filename does not prove synthetic contents or expired consent.
 
 Use skill-smith's shared `storage_contract.py` for contract validation and metadata
 inspection of a verified PRIVATE companion. It does not execute domain schemas.

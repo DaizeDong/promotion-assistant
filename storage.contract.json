@@ -339,6 +339,45 @@
         "class": "rebuildable",
         "rule": "Normal completion removes staging files. After interruption, remove only after the writer stops and the final state, required inputs and commit outcome are known."
       }
+    },
+    {
+      "artifact_id": "companion_apply_bridge",
+      "path_pattern": "scripts/apply.py",
+      "purpose": "Selected companion-specific credential and configuration application bridge.",
+      "schema": "skills/promotion-assistant/scripts/cli.py: cmd_apply; companion provisioning runbooks.",
+      "producer": "Companion maintainer.",
+      "consumer_or_final_deliverable": "The source apply command delegates to this exact companion helper; provisioning and restoration workflows also select it.",
+      "rebuild_or_restore": "Restore the reviewed companion version and validate any replacement against the selected apply interface.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Preserve while the selected apply or restoration workflow depends on this helper. Its interface role does not prove matching templates exist or provisioning succeeds."
+      }
+    },
+    {
+      "artifact_id": "companion_credential_capture",
+      "path_pattern": "scripts/capture-key.ps1",
+      "purpose": "Selected companion credential provisioning helper.",
+      "schema": "Companion provisioning runbooks and secrets/README.md; the helper writes selected private credential files.",
+      "producer": "Companion maintainer.",
+      "consumer_or_final_deliverable": "Reviewed credential capture and the following configuration application step.",
+      "rebuild_or_restore": "Restore the reviewed helper with its selected private credential backup or reauthorization procedure.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Preserve while current provisioning or restoration instructions select this helper. Retire only after those instructions and a validated replacement agree."
+      }
+    },
+    {
+      "artifact_id": "obsolete_mcp_verifier",
+      "path_pattern": "scripts/verify.sh",
+      "purpose": "Legacy MCP listing and registry.tools verifier superseded by current validation interfaces.",
+      "schema": "Legacy helper expects registry.tools and a separate functional-test.py; current channel configuration uses registry.channels.",
+      "producer": "Historical companion scaffolding.",
+      "consumer_or_final_deliverable": "No current selected workflow; current restoration uses the source doctor and companion apply.py --verify.",
+      "rebuild_or_restore": "Use the current source doctor and selected companion application checks; retain any required diagnostic evidence separately.",
+      "retention_rule": {
+        "class": "retired",
+        "rule": "Eligible only for a separately reviewed exact-file retirement after inactivity and recovery checks. Classification does not authorize automatic deletion or execute the helper."
+      }
     }
   ],
   "protected_paths": [

@@ -1,7 +1,7 @@
 # Private campaign data
 
 [storage.contract.json](storage.contract.json) declares companion storage and
-retention. [CONFIG.md](CONFIG.md), the configuration loader, compliance checks and
+retention using paths relative to the companion repository root. [CONFIG.md](CONFIG.md), the configuration loader, compliance checks and
 run validators remain authoritative for content.
 
 Keep the current product, channel registry, per-channel policies, selected campaign
@@ -33,9 +33,15 @@ provisioning, so retention does not establish a working credential bridge.
 
 The exact `scripts/verify.sh` is a retired MCP registry verifier. Current
 restoration uses the source doctor and companion `apply.py --verify`. Its retired
-classification does not authorize deletion. Legacy compliance policies, consent
-templates and operator documents require separate review of their obligations;
-a template filename does not prove synthetic contents or expired consent.
+classification does not authorize deletion. The exact legacy
+`compliance/policy.json` and `compliance/consent-ledger.template.jsonl` are
+protected review inputs until their unique decisions, evidence and obligations
+are reconciled. Current dispatch reads product and channel policies and the
+current consent ledger; retaining legacy inputs does not validate that schema or
+enable dispatch. A template filename does not prove synthetic contents or
+expired consent. Companion philosophy copies are rebuildable setup guidance;
+the historical companion changelog is retired after its reference dependencies
+end and a separate exact-file retirement is reviewed.
 
 Use skill-smith's shared `storage_contract.py` for contract validation and metadata
 inspection of a verified PRIVATE companion. It does not execute domain schemas.

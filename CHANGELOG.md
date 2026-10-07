@@ -4,6 +4,14 @@ All notable changes to this project are documented here (Keep a Changelog style)
 
 ## [Unreleased]
 
+### Storage review threshold
+- Set a 64 MiB companion working-data review threshold. Required observations and
+  recovery state stay protected when the threshold is exceeded.
+
+### Fixed
+- Declare retained legacy consent and policy inputs without treating them as
+  active sending permission; distinguish them from superseded documentation.
+
 ### Added
 - Owned-account Mastodon and Bluesky adapters with identity checks and matching provider receipts; registered manual surfaces retain preparation workflows.
 - Durable reviewed runs with per-destination payloads, delivery state and resume behavior.

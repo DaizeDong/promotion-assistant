@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "tool": "promotion-assistant",
+  "max_bytes": 67108864,
   "artifacts": [
     {
       "artifact_id": "readme",
@@ -377,6 +378,58 @@
       "retention_rule": {
         "class": "retired",
         "rule": "Eligible only for a separately reviewed exact-file retirement after inactivity and recovery checks. Classification does not authorize automatic deletion or execute the helper."
+      }
+    },
+    {
+      "artifact_id": "legacy-compliance-policy",
+      "path_pattern": "compliance/policy.json",
+      "purpose": "Private compliance decisions retained for reconciliation with current dispatch policy.",
+      "schema": "Legacy companion compliance-policy document; current runtime reads product.compliance and channel policies.",
+      "producer": "Companion compliance maintenance.",
+      "consumer_or_final_deliverable": "Compliance review and reconciliation of prior policy obligations.",
+      "rebuild_or_restore": "Restore the reviewed private policy with the consent and suppression evidence it references.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Preserve until its unique decisions and referenced obligations have been reconciled with current policy. This declaration does not make the legacy document an active runtime policy."
+      }
+    },
+    {
+      "artifact_id": "legacy-consent-evidence",
+      "path_pattern": "compliance/consent-ledger.template.jsonl",
+      "purpose": "Existing consent-source records retained for obligation review.",
+      "schema": "Legacy JSONL records with lawful_basis, captured_at, source and evidence; differs from current latest-row consent schema.",
+      "producer": "Companion consent maintenance.",
+      "consumer_or_final_deliverable": "Review of consent provenance and any continuing contact obligations.",
+      "rebuild_or_restore": "Restore exact records from private history; migrate only after the evidence and current consent requirements are reconciled.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep records while their evidence or obligations remain relevant. A template suffix does not prove synthetic content, current consent or safe retirement."
+      }
+    },
+    {
+      "artifact_id": "companion-philosophy",
+      "path_pattern": "PHILOSOPHY.md",
+      "purpose": "Companion setup rationale that can be replaced by current source operating guidance.",
+      "schema": "Source PHILOSOPHY.md and DATA.md.",
+      "producer": "Companion scaffolding and maintenance.",
+      "consumer_or_final_deliverable": "Companion-maintainer setup reference.",
+      "rebuild_or_restore": "Recreate minimal current guidance from the source and retain any unique required decision before replacement.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Replace obsolete copied guidance after checking for unique decisions and current references; keep current instructions in the source."
+      }
+    },
+    {
+      "artifact_id": "retired-companion-changelog",
+      "path_pattern": "CHANGELOG.md",
+      "purpose": "Historical companion-scaffolding release notes.",
+      "schema": "Markdown release notes for the initial companion scaffolding.",
+      "producer": "Historical companion scaffolding.",
+      "consumer_or_final_deliverable": "No current runtime reader; the source owns current release and operating instructions.",
+      "rebuild_or_restore": "Read the existing private revision if historical scaffolding details are needed.",
+      "retention_rule": {
+        "class": "retired",
+        "rule": "Eligible only after historical-reference dependencies are released and a separate exact-file retirement is reviewed; no automatic deletion is authorized."
       }
     }
   ],

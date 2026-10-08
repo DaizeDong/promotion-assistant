@@ -1,5 +1,6 @@
 {
   "product": {
+    "schema_version": 1,
     "name": "AcmeCorp",
     "send_mode": "dry_run",
     "aff_base": "https://example.com/ref/",
@@ -10,6 +11,7 @@
     }
   },
   "registry": {
+    "schema_version": 1,
     "channels": [
       {
         "slug": "email",

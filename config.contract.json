@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "repository_kind": "skill",
+  "configuration": "settings",
+  "rationale": "Runtime behavior consumes a selected PRIVATE product configuration and validates capability-specific readiness.",
+  "documentation": [
+    "README.md",
+    "README_CN.md",
+    "CONFIG.md",
+    "DATA.md"
+  ],
+  "settings": {
+    "schema_document": "CONFIG.md",
+    "discovery_document": "CONFIG.md",
+    "environment": "PROMO_CONFIG_DIR",
+    "aliases": [
+      "PROMOTION_ASSISTANT_CONFIG",
+      "PROMOTION_ASSISTANT_CONFIG_DIR"
+    ],
+    "precedence": [
+      "--config / --config-dir",
+      "PROMO_CONFIG_DIR",
+      "PROMOTION_ASSISTANT_CONFIG",
+      "PROMOTION_ASSISTANT_CONFIG_DIR",
+      "~/.promotion-assistant-config",
+      "~/.config/promotion-assistant-config"
+    ],
+    "required_fields": [
+      "product.schema_version",
+      "product.name",
+      "registry.schema_version",
+      "registry.channels[].slug",
+      "registry.channels[].platform"
+    ],
+    "initializer": {
+      "path": "skills/promotion-assistant/scripts/init_config.py",
+      "args": [
+        "--out",
+        "{output}"
+      ]
+    },
+    "doctor": {
+      "path": "skills/promotion-assistant/scripts/verify_config.py",
+      "args": []
+    }
+  }
+}

@@ -48,3 +48,7 @@ underneath* one of those failures, not the symptom on top.
   convergence + drift recovery, throttle limits, compliance fail-closure, dry-run zero-egress,
   propensity completeness, anti-fingerprint, delayed-conversion censoring and idempotency. No
   behavior ships until they pass; a failure is an explicit gap, never a silent ship.
+
+Provider identity must follow product selection. Binding resources from the selected companion
+for each dispatch prevents a process-level credential from silently surviving a product switch.
+Source-owned artifact admission also makes a new output kind an explicit design decision.

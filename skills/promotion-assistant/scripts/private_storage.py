@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 import re
 import stat
-import tempfile
+import uuid
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -98,6 +99,26 @@ def _read_current(path, missing=None):
         return missing
 
 
+@lru_cache(maxsize=1)
+def _storage_api():
+    path = ROOT / 'guards/tools/storage_contract.py'
+    spec = importlib.util.spec_from_file_location('_promotion_storage_contract', path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def authorize(path, *, directory=False):
+    checked, proof = _prove(path)
+    root = Path(proof.root)
+    result = _storage_api().authorize_artifact_write(
+        ROOT, root, checked.relative_to(root).as_posix(), directory=directory)
+    if Path(result.path) != checked:
+        raise ValueError('runtime artifact authority changed destination')
+    return checked
+
+
 def read_text(path, *, missing=''):
     return _read_current(prove(path), missing)
 
@@ -105,10 +126,10 @@ def read_text(path, *, missing=''):
 @contextmanager
 def exclusive(path, *, timeout=10):
     """Cooperating writers serialize; stale locks require explicit recovery."""
-    target = prove(path)
+    target = authorize(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     lock = target.with_name('.'+target.name+'.lock')
-    prove(lock)
+    authorize(lock)
     deadline = time.monotonic()+timeout
     descriptor = None
     try:
@@ -136,8 +157,9 @@ def _replace(path, payload):
         checked, before = _prove(path)
         if checked != path:
             raise ValueError('runtime state destination changed')
-        descriptor, name = tempfile.mkstemp(prefix='.'+path.name+'-', dir=path.parent)
-        temporary = Path(name)
+        authorize(path)
+        temporary = authorize(path.with_name('.'+path.name+'-'+uuid.uuid4().hex))
+        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'w', encoding='utf-8', newline='\n') as stream:
             stream.write(payload)
             stream.flush()
@@ -146,6 +168,7 @@ def _replace(path, payload):
         if (checked != path or (after.root, after.repositories, after.signature) !=
                 (before.root, before.repositories, before.signature)):
             raise ValueError('runtime state destination changed')
+        authorize(path)
         os.replace(temporary, path)
         temporary = None
     finally:

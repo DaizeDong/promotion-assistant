@@ -217,6 +217,8 @@ def check(payload: dict, *, policy: dict, suppression: set, consent: dict) -> tu
 
 def record_unsub(path: Path, recipient: str) -> None:
     """Append a recipient to suppression immediately (stored normalized; dedupe on read)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8", newline="") as f:
-        csv.writer(f).writerow([normalize_recipient(recipient)])
+    from . import private_storage
+    import io
+    row = io.StringIO(newline='')
+    csv.writer(row).writerow([normalize_recipient(recipient)])
+    private_storage.update_text(path, lambda previous: ((previous or '') + row.getvalue(), None))

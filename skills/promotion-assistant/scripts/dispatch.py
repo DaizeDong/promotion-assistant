@@ -26,6 +26,7 @@ import os
 from pathlib import Path
 
 from . import compliance, events, providers, email_contract, private_storage
+from .config import ConfigError
 
 
 def _authorized(channel: str, send_mode: str, *, env=None, expected=None) -> tuple:
@@ -159,14 +160,22 @@ def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
         mode = 'manual-prep' if isinstance(provider, providers.ManualPrepProvider) else 'deferred'
         return result(mode, reason=provider.deferred_reason)
     try:
+        resources = cfg.runtime_env()
+    except ConfigError:
+        reason = 'selected runtime resources are invalid; repair secrets/runtime.env before retrying'
+        receipt = providers._not_applied(payload, platform, reason)
+        return result('failed', live=False, provider=receipt, receipt=receipt,
+                      reason=reason, safe_to_retry=True)
+    try:
         before_effect = decision.get('_before_effect')
         if before_effect:
             before_effect()
     except Exception as exc:
         return result('failed', reason='intent persistence failed: '+type(exc).__name__)
     try:
-        receipt = (provider.publish(payload, live=True) if action.startswith('post') or action == 'publish'
-                   else provider.dm(payload, live=True))
+        with providers.runtime_environment(resources):
+            receipt = (provider.publish(payload, live=True) if action.startswith('post') or action == 'publish'
+                       else provider.dm(payload, live=True))
     except Exception as exc:
         return result('uncertain', live=True, reason='provider interrupted: '+type(exc).__name__)
     if isinstance(receipt, dict) and receipt.get('rate_limited') is True:

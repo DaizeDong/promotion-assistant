@@ -15,6 +15,8 @@ OAuth posting and X API). A deferred-gap is an EXPLICIT gap, never a silent skip
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 import hashlib
 import os
 import re
@@ -28,6 +30,23 @@ if __package__:
     from . import email_contract
 else:
     from scripts import email_contract
+
+_SELECTED_ENV = ContextVar('promotion_selected_resources', default=None)
+
+
+@contextmanager
+def runtime_environment(environment):
+    token = _SELECTED_ENV.set(dict(environment))
+    try:
+        yield
+    finally:
+        _SELECTED_ENV.reset(token)
+
+
+def _environment():
+    selected = _SELECTED_ENV.get()
+    return os.environ if selected is None else selected
+
 
 # Local infra contracts (reused, not reimplemented). Paths are env-configurable for portability;
 # defaults are generic per-tool locations, never hardcoded personal install paths.
@@ -195,7 +214,10 @@ class EmailProvider(Provider):
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        if not SEND_GMAIL_PS1.is_file():
+        selected = _SELECTED_ENV.get()
+        helper = (Path(selected.get('PROMO_SEND_GMAIL', '')).expanduser()
+                  if selected is not None else SEND_GMAIL_PS1)
+        if not helper.is_file():
             return _not_applied(payload, self.platform, 'email helper not found; initialize reviewed-email-v1 support')
         if not _arg_binding_safe(payload.get('recipient'), payload.get('subject'), payload.get('body')):
             return _not_applied(payload, self.platform, 'argument starts with a dash; conservative binding guard')
@@ -205,7 +227,7 @@ class EmailProvider(Provider):
             return _not_applied(payload, self.platform, str(exc))
         # All values travel in one JSON argument. The helper must verify request_sha256 and
         # return observed sender/content evidence; legacy -To/-Subject/-Body helpers are unsupported.
-        cmd = ["powershell", "-NoProfile", "-File", str(SEND_GMAIL_PS1),
+        cmd = ["powershell", "-NoProfile", "-File", str(helper),
                "-RequestJson", json.dumps(request, ensure_ascii=False)]
         try:
             response = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
@@ -240,8 +262,8 @@ class DiscordOwnServerProvider(Provider):
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        token = os.environ.get("PROMO_DISCORD_BOT_TOKEN", "").strip()
-        channel_id = os.environ.get("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", "").strip()
+        token = _environment().get("PROMO_DISCORD_BOT_TOKEN", "").strip()
+        channel_id = _environment().get("PROMO_DISCORD_ANNOUNCE_CHANNEL_ID", "").strip()
         if not token or not channel_id:
             return _not_applied(payload, self.platform, 'PROMO_DISCORD_BOT_TOKEN / PROMO_DISCORD_ANNOUNCE_CHANNEL_ID not in env')
         if not channel_id.isdigit():
@@ -262,7 +284,7 @@ class DiscordOwnServerProvider(Provider):
         # a big unfurled website card on every one is noisy -- a clickable link is enough. flags=4 is
         # SUPPRESS_EMBEDS. Set PROMO_DISCORD_ALLOW_EMBED=1 for a rare launch post that wants the card.
         body = {"content": content}
-        if not os.environ.get("PROMO_DISCORD_ALLOW_EMBED", "").strip():
+        if not _environment().get("PROMO_DISCORD_ALLOW_EMBED", "").strip():
             body["flags"] = 4
         data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
@@ -296,8 +318,8 @@ class MastodonProvider(Provider):
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        instance = os.environ.get("PROMO_MASTODON_INSTANCE", "").strip().rstrip("/")
-        token = os.environ.get("PROMO_MASTODON_TOKEN", "").strip()
+        instance = _environment().get("PROMO_MASTODON_INSTANCE", "").strip().rstrip("/")
+        token = _environment().get("PROMO_MASTODON_TOKEN", "").strip()
         if not instance or not token:
             return _not_applied(payload, self.platform, 'PROMO_MASTODON_INSTANCE / PROMO_MASTODON_TOKEN not in env')
         parts = [p for p in ((payload.get("subject") or "").strip(), (payload.get("body") or "").strip(),
@@ -379,8 +401,8 @@ class BlueskyProvider(Provider):
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        handle = os.environ.get("PROMO_BLUESKY_HANDLE", "").strip()
-        app_pw = os.environ.get("PROMO_BLUESKY_APP_PASSWORD", "").strip()
+        handle = _environment().get("PROMO_BLUESKY_HANDLE", "").strip()
+        app_pw = _environment().get("PROMO_BLUESKY_APP_PASSWORD", "").strip()
         if not handle or not app_pw:
             return _not_applied(payload, self.platform, 'PROMO_BLUESKY_HANDLE / PROMO_BLUESKY_APP_PASSWORD not in env')
         parts = [p for p in ((payload.get("subject") or "").strip(), (payload.get("body") or "").strip(),

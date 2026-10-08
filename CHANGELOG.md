@@ -9,6 +9,8 @@ All notable changes to this project are documented here (Keep a Changelog style)
   recovery state stay protected when the threshold is exceeded.
 
 ### Fixed
+- Bind provider resources to selected-root runtime.env, replace the unsupported companion apply bridge with local doctor validation, and reject incomplete schemas before READY.
+- Authorize source-owned runtime writes and declare scheduling receipts, locks and staging with dependency-based recovery rules.
 - Declare retained legacy consent and policy inputs without treating them as
   active sending permission; distinguish them from superseded documentation.
 

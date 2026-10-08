@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """L0 config/credential locator (product-agnostic).
 
-Resolves the active per-product config repo (Mode B: secrets gitignored) and loads
-product.json / registry.json / channel policy / copy library / audiences. Never reads
-secrets/*.env values into the process beyond what apply.py needs — credentials are
-bridged into the live MCP/active config by the config repo's own apply.py, not here.
+Resolves the selected PRIVATE companion and loads product/channel configuration.
+Provider resources are read from its secrets/runtime.env without changing global
+process environment. Live authorization remains a separate process-local gate.
 
 Discovery order (first hit wins):
   1. $PROMO_CONFIG_DIR                        (explicit, recommended — primary)
@@ -17,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from .private_storage import prove
 
@@ -94,6 +94,56 @@ class Config:
         if not self.product:
             raise ConfigError("product.json missing/empty in %s" % root)
 
+    def settings_errors(self):
+        errors = []
+        for label, doc in (('product', self.product), ('registry', self.registry)):
+            if type(doc.get('schema_version')) is not int or doc['schema_version'] != 1:
+                errors.append(label + '.schema_version must equal 1')
+        name = self.product.get('name')
+        if not isinstance(name, str) or not name.strip() or name.strip().startswith('<'):
+            errors.append('product.name must be a configured nonempty name')
+        if self.send_mode not in {'dry_run', 'live'}:
+            errors.append('product.send_mode must be dry_run or live')
+        for channel in self.channels():
+            slug = channel.get('slug', '')
+            if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
+                errors.append('registry.channels.slug must be a safe lowercase slug')
+            if not isinstance(channel.get('platform'), str) or not channel['platform'].strip():
+                errors.append('registry.channels.platform is required')
+        return errors
+
+    def runtime_env(self):
+        """Read one selected-root resource binding; never inherit ambient credentials."""
+        from .private_storage import read_text
+        allowed = {'PROMO_SEND_GMAIL', 'PROMO_DISCORD_BOT_TOKEN',
+                   'PROMO_DISCORD_ANNOUNCE_CHANNEL_ID', 'PROMO_DISCORD_ALLOW_EMBED',
+                   'PROMO_MASTODON_INSTANCE', 'PROMO_MASTODON_TOKEN',
+                   'PROMO_BLUESKY_HANDLE', 'PROMO_BLUESKY_APP_PASSWORD'}
+        try:
+            body = read_text(self.data_path('secrets', 'runtime.env'), missing='')
+            result = {}
+            for number, line in enumerate(body.splitlines(), 1):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                key, separator, value = line.partition('=')
+                key, value = key.strip(), value.strip()
+                if not separator or key not in allowed or key in result:
+                    raise ValueError('invalid or duplicate resource key at line ' + str(number))
+                if value.startswith(('"', "'")):
+                    if len(value) < 2 or value[-1] != value[0]:
+                        raise ValueError('unclosed resource quote at line ' + str(number))
+                    value = value[1:-1]
+                if '\x00' in value or value.startswith('<'):
+                    raise ValueError('unconfigured resource at line ' + str(number))
+                result[key] = value
+            if result.get('PROMO_SEND_GMAIL'):
+                helper = Path(result['PROMO_SEND_GMAIL']).expanduser()
+                result['PROMO_SEND_GMAIL'] = str(helper if helper.is_absolute() else self.root / helper)
+            return result
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise ConfigError('selected secrets/runtime.env is invalid: ' + str(exc)) from exc
+
     # --- product-level gates ---
     @property
     def send_mode(self) -> str:
@@ -168,11 +218,15 @@ class Config:
         d = self.data_path('metrics')
         for name in ('events.jsonl', 'dry-run.jsonl', 'bandit-state.json', 'throttle-state.json', 'suppression.csv', 'runs'):
             self.data_path('metrics', name)
+        from .private_storage import authorize
+        authorize(d / "events.jsonl")
         d.mkdir(parents=True, exist_ok=True)
         return d
 
     def compliance_dir(self) -> Path:
         d = self.data_path('compliance')
+        from .private_storage import authorize
+        authorize(d / "consent-ledger.jsonl")
         d.mkdir(parents=True, exist_ok=True)
         return d
 

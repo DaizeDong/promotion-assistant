@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import re
-import tempfile
 import time
 import uuid
 
@@ -44,22 +43,13 @@ def intent(record):
 def save(cfg, record):
     path = cfg.data_path('metrics', 'runs', safe_id(record['run_id'])+'.json')
     record.update(aggregate(record))
-    fd, name = tempfile.mkstemp(prefix='.'+path.name, dir=path.parent)
-    temporary = Path(name)
-    try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
-            json.dump(record, stream, ensure_ascii=False)
-            stream.flush()
-            os.fsync(stream.fileno())
-        cfg.data_path('metrics', 'runs', path.name)
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    private_storage._replace(path, json.dumps(record, ensure_ascii=False))
 
 
 @contextmanager
 def lock(cfg, run_id):
     path = cfg.data_path('metrics', 'runs', run_id+'.lock')
+    private_storage.authorize(path)
     with path.open('x', encoding='utf-8') as stream:
         stream.write('run active; inspect stale lock before removal\n')
     try:
@@ -194,6 +184,7 @@ def execute(cfg, campaign, *, env=None, clock=None, rng=None, conversion_window_
         run_id = safe_id(run_id) if run_id is not None else 'run-'+uuid.uuid4().hex
         cfg.metrics_dir()
         directory = cfg.data_path('metrics', 'runs')
+        private_storage.authorize(directory / (run_id + ".json"))
         directory.mkdir(exist_ok=True)
         path = cfg.data_path('metrics', 'runs', run_id+'.json')
         with lock(cfg, run_id):
@@ -222,6 +213,7 @@ def execute(cfg, campaign, *, env=None, clock=None, rng=None, conversion_window_
                 record = {'schema_version': 1, 'run_id': run_id, 'campaign': campaign,
                           'scope': scope, 'pick': pick, 'items': items, 'duplicate_count': duplicates}
                 record['intent_sha256'] = intent(record)
+                private_storage.authorize(path)
                 with path.open('x', encoding='utf-8') as stream:
                     json.dump(aggregate(record), stream)
                     stream.flush()

@@ -79,17 +79,17 @@ def synthetic_private_metadata(monkeypatch, request):
 
     from types import SimpleNamespace
 
-    def proof(repo):
+    def proof(repo, visibility_map=None):
         return SimpleNamespace(root=str(repo), repositories=('example/synthetic-promotion-config',),
                                signature='synthetic-publication')
 
     def read(proof, *arguments):
-        assert arguments == ('rev-parse', '--verify', 'HEAD')
-        return SimpleNamespace(returncode=0, stdout='1'*40)
+        return SimpleNamespace(returncode=1 if arguments[0] == 'check-ignore' else 0, stdout='1'*40)
 
     api = SimpleNamespace(GitError=RuntimeError, prove_private_companion=proof,
                           read_private_companion_git=read)
 
     monkeypatch.setattr(private_storage, 'repository', repository)
     monkeypatch.setattr(private_storage, '_guard_api', lambda: api)
+    monkeypatch.setattr(private_storage._storage_api(), 'load_boundary', lambda: api)
     return actual_repository

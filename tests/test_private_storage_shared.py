@@ -35,9 +35,10 @@ def native_storage(tmp_path, monkeypatch):
     spec.loader.exec_module(boundary)
     api = SimpleNamespace(
         GitError=boundary.GitError,
-        prove_private_companion=lambda path: boundary.prove_private_companion(path, fixture['receipt']),
+        prove_private_companion=lambda path, visibility_map=None: boundary.prove_private_companion(path, fixture['receipt']),
         read_private_companion_git=boundary.read_private_companion_git)
     monkeypatch.setattr(storage, '_guard_api', lambda: api, raising=False)
+    monkeypatch.setattr(storage._storage_api(), 'load_boundary', lambda: api)
     # Preserve a pre-fix comparison: only legacy gh visibility is synthetic.
     if hasattr(storage, '_run'):
         original = storage._run
@@ -78,12 +79,12 @@ def test_native_unsafe_transport_or_rewrite_cannot_authorize_data(native_storage
 
 def test_native_private_and_public_controls(native_storage):
     fixture = native_storage
-    private = fixture['repos']['private']/'state.json'
+    private = fixture['repos']['private']/'metrics/events.jsonl'
     assert storage.prove(private) == private
     storage.update_text(private, lambda before: ('synthetic state\n', 'saved'))
     assert storage.read_text(private) == 'synthetic state\n'
     with pytest.raises(ValueError):
-        storage.prove(fixture['repos']['public']/'state.json')
+        storage.prove(fixture['repos']['public']/'metrics/events.jsonl')
 
 
 def test_native_caller_repository_selector_does_not_redirect_proof(native_storage, monkeypatch):
@@ -91,14 +92,14 @@ def test_native_caller_repository_selector_does_not_redirect_proof(native_storag
     caller = fixture['repos']['public']
     monkeypatch.setenv('GIT_DIR', str(caller/'.git'))
     monkeypatch.setenv('GIT_WORK_TREE', str(caller))
-    target = fixture['repos']['private']/'state.json'
+    target = fixture['repos']['private']/'metrics/events.jsonl'
     assert storage.prove(target) == target
 
 
 def test_native_publication_change_during_transform_preserves_state(native_storage):
     fixture = native_storage
     repo = fixture['repos']['private']
-    target = repo/'state.json'
+    target = repo/'metrics/events.jsonl'
     target.write_text('synthetic retained state\n')
     def transform(before):
         fixture['git'](repo, 'config', 'http.sslVerify', 'false')
@@ -127,7 +128,7 @@ def test_native_all_configured_destinations_require_private_receipts(native_stor
         receipt['example-owner/synthetic-secondary'] = visibility
     fixture['receipt'].write_text(json.dumps(receipt))
     with pytest.raises(ValueError):
-        storage.prove(repo/'state.json')
+        storage.prove(repo/'metrics/events.jsonl')
 
 
 @pytest.mark.parametrize('url', ['https://example.com/owner/repo', 'file:///synthetic',
@@ -137,7 +138,7 @@ def test_native_unproved_remote_routes_are_refused(native_storage, url):
     repo = fixture['repos']['private']
     fixture['git'](repo, 'remote', 'set-url', 'origin', url)
     with pytest.raises(ValueError):
-        storage.prove(repo/'state.json')
+        storage.prove(repo/'metrics/events.jsonl')
 
 
 @pytest.mark.parametrize('state', ['missing', 'malformed', 'stale', 'future', 'unknown'])
@@ -155,7 +156,7 @@ def test_native_missing_or_invalid_receipt_cannot_authorize_storage(native_stora
             receipt['_refreshed'] = ('2000' if state == 'stale' else '2100') + '-01-01T00:00:00Z'
         fixture['receipt'].write_text(json.dumps(receipt))
     with pytest.raises(ValueError):
-        storage.prove(fixture['repos']['private']/'state.json')
+        storage.prove(fixture['repos']['private']/'metrics/events.jsonl')
 
 
 def test_native_unborn_history_is_rejected(native_storage):
@@ -163,24 +164,24 @@ def test_native_unborn_history_is_rejected(native_storage):
     repo = fixture['repos']['private']
     fixture['git'](repo, 'symbolic-ref', 'HEAD', 'refs/heads/synthetic-unborn')
     with pytest.raises(ValueError):
-        storage.prove(repo/'state.json')
+        storage.prove(repo/'metrics/events.jsonl')
 
 
 def test_native_linked_private_and_nested_public_boundaries(native_storage, tmp_path):
     fixture = native_storage
     linked = tmp_path/'linked-private'
     fixture['git'](fixture['repos']['private'], 'worktree', 'add', '--detach', str(linked))
-    assert storage.prove(linked/'state.json') == linked/'state.json'
+    assert storage.prove(linked/'metrics/events.jsonl') == linked/'metrics/events.jsonl'
     nested = fixture['repos']['private']/'nested-public'
     fixture['git'](fixture['repos']['public'], 'worktree', 'add', '--detach', str(nested))
     with pytest.raises(ValueError):
-        storage.prove(nested/'state.json')
+        storage.prove(nested/'metrics/events.jsonl')
 
 
 def test_native_config_drift_before_replace_preserves_state(native_storage, monkeypatch):
     fixture = native_storage
     repo = fixture['repos']['private']
-    target = repo/'state.json'
+    target = repo/'metrics/events.jsonl'
     target.write_text('synthetic retained state\n')
     original = storage.os.fsync
     def drift(descriptor):

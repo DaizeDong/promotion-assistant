@@ -1,14 +1,12 @@
-# L0, Per-product config repo (Mode B)
+# L0, Per-product private config repo
 
 The skill is product-agnostic. All copy, audiences, channel policy and secrets live in a **separate
-private config repo**, located via `PROMO_CONFIG_DIR` (or `~/.promotion-assistant-config`). Fork the
-structure from `companion config kit`'s template; secrets are **always gitignored** (Mode B, promo
-OAuth/SMTP creds are high blast-radius and auto-revoked, so the market-intel "Mode A" rationale does
-not apply).
+private config repo**, located via `PROMO_CONFIG_DIR` (or `~/.promotion-assistant-config`). Generate the structure with the source initializer. Provider binding is selected-root
+`secrets/runtime.env`; [CONFIG.md](../../../CONFIG.md) lists supported keys and recovery rules.
 
 ```
 <product>-promo-config/
-  product.json            # profile + global send_mode gate (dry_run|sim|test_account|live)
+  product.json            # profile + global send_mode gate (dry_run|live)
   registry.json           # one row per channel (slug/platform/transport/warmup_state/...)
   channels/<slug>/policy.json   # day/hour/week caps, min/max gap, warmup_curve, backoff(AIMD)
   copy/<campaign>.json    # arms: {id, channel, segment, hook, body, cta, utm, status}
@@ -16,8 +14,8 @@ not apply).
   compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
   metrics/                # versioned PRIVATE events, previews, suppression and runtime state
   metrics/runs/<id>.json   # versioned PRIVATE frozen intent and per-item receipts
-  secrets/                # [gitignored] <slug>.env (only *.template + README committed)
-  scripts/apply.py        # secrets -> active ~/.claude.json (never echoes values); forked from companion config kit
+  secrets/                # PRIVATE versioned <slug>.env credentials and recovery docs
+  secrets/runtime.env    # provider resource mapping, never loaded as shell code
   runbooks/               # new-machine.md, live-authorize.md, ban-recovery.md
 ```
 

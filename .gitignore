@@ -1,5 +1,5 @@
 # This PUBLIC skill repo must never contain product copy, credentials, or runtime metrics.
-# (Those live only in the private per-product config repo, Mode B.)
+# (Those live only in the private per-product config repo.)
 __pycache__/
 *.pyc
 .python-version

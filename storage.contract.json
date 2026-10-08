@@ -330,7 +330,7 @@
     },
     {
       "artifact_id": "run_staging",
-      "path_pattern": "metrics/runs/.*.json*",
+      "path_pattern": "metrics/runs/.*.json-*",
       "purpose": "Exclusive temporary bytes before atomic runtime state publication.",
       "schema": "skills/promotion-assistant/scripts/runs.py: save",
       "producer": "The active runtime state writer.",
@@ -347,11 +347,11 @@
       "purpose": "Selected companion-specific credential and configuration application bridge.",
       "schema": "skills/promotion-assistant/scripts/cli.py: cmd_apply; companion provisioning runbooks.",
       "producer": "Companion maintainer.",
-      "consumer_or_final_deliverable": "The source apply command delegates to this exact companion helper; provisioning and restoration workflows also select it.",
+      "consumer_or_final_deliverable": "Legacy companion helper; current source apply validates secrets/runtime.env and does not execute this file.",
       "rebuild_or_restore": "Restore the reviewed companion version and validate any replacement against the selected apply interface.",
       "retention_rule": {
-        "class": "core",
-        "rule": "Preserve while the selected apply or restoration workflow depends on this helper. Its interface role does not prove matching templates exist or provisioning succeeds."
+        "class": "retired",
+        "rule": "Retire only after external provisioning and restoration references have migrated to selected-root runtime.env and current source doctor."
       }
     },
     {
@@ -430,6 +430,32 @@
       "retention_rule": {
         "class": "retired",
         "rule": "Eligible only after historical-reference dependencies are released and a separate exact-file retirement is reviewed; no automatic deletion is authorized."
+      }
+    },
+    {
+      "artifact_id": "schedule-requests",
+      "path_pattern": "metrics/schedule-requests/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json",
+      "purpose": "Stable scheduling request identity and occurrence time used across retries.",
+      "schema": "skills/promotion-assistant/scripts/orchestrate.py: _schedule_request: title, due_at, idempotency_key, ext, description; exact key set retained across retry.",
+      "producer": "skills/promotion-assistant/scripts/orchestrate.py: _schedule_request via private_storage.update_text.",
+      "consumer_or_final_deliverable": "Repeated plan calls reuse the same identity when registering reminders.",
+      "rebuild_or_restore": "Restore exact receipt together with matching scheduler registrations before retrying a plan.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep until the related plan, registrations and all retries are closed; never regenerate identity merely because registration outcome is uncertain."
+      }
+    },
+    {
+      "artifact_id": "schedule-staging",
+      "path_pattern": "metrics/schedule-requests/.[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json-*",
+      "purpose": "Atomic staging for schedule-request identity.",
+      "schema": "private_storage._replace UTF-8 JSON staging matching the schedule-request schema.",
+      "producer": "skills/promotion-assistant/scripts/private_storage.py: _replace.",
+      "consumer_or_final_deliverable": "The active schedule-request commit.",
+      "rebuild_or_restore": "Reconcile final receipt and scheduler registration before rebuilding or retiring interrupted staging.",
+      "retention_rule": {
+        "class": "rebuildable",
+        "rule": "Remove on successful replacement; after interruption retain until the writer stops and receipt/registration state is resolved."
       }
     }
   ],

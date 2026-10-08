@@ -290,7 +290,8 @@ def test_channel_capabilities_and_doctor_are_not_live_proof(case, monkeypatch, c
     from scripts import cli
     resource = case['root']/'synthetic-mail.ps1'
     resource.write_text('# Synthetic resource')
-    monkeypatch.setenv('PROMO_SEND_GMAIL', str(resource))
+    (case['root'] / 'secrets').mkdir(exist_ok=True)
+    (case['root'] / 'secrets/runtime.env').write_text('PROMO_SEND_GMAIL='+str(resource)+'\n')
     assert cli.main(['--config', str(case['root']), 'channels', 'list', '--json']) == 0
     rows = json.loads(capsys.readouterr().out)['channels']
     assert rows[0]['implemented'] and rows[0]['configured'] and rows[0]['live_proven'] == 'not_run'
@@ -444,7 +445,7 @@ def test_private_api_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic
     (root/'registry.json').write_text(json.dumps(SAMPLE['registry']))
     api = private_storage._guard_api()
     calls = []
-    def proof(repo):
+    def proof(repo, visibility_map=None):
         calls.append(('proof', repo))
         if visibility != SAMPLE['visibility_responses'][0]:
             raise api.GitError('synthetic rejected visibility receipt')
@@ -452,8 +453,7 @@ def test_private_api_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic
                                signature='synthetic-publication')
     def read(proof, *arguments):
         calls.append(('read', arguments))
-        assert arguments == ('rev-parse', '--verify', 'HEAD')
-        return SimpleNamespace(stdout='1'*40, returncode=0)
+        return SimpleNamespace(stdout='1'*40, returncode=1 if arguments[0] == 'check-ignore' else 0)
     monkeypatch.setattr(api, 'prove_private_companion', proof)
     monkeypatch.setattr(api, 'read_private_companion_git', read)
     if visibility == SAMPLE['visibility_responses'][0]:

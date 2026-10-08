@@ -55,7 +55,7 @@ cd ~/.claude/plugins/promotion-assistant
 ```
 
 Then create a separate committed Git companion with PRIVATE fetch and push destinations on every
-remote (fork the `companion config kit` template, Mode B secrets), and point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
+remote (fork the `companion config kit` template with versioned private credentials), and point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
 
 Use Python 3.11 or newer, Git, and a fresh PRIVATE visibility receipt at
 `~/.pii-guard/visibility.json`. The pinned Guards API checks that local receipt and the actual Git
@@ -81,32 +81,30 @@ python scripts/cli.py report --funnel                 # six-layer funnel
 
 ## Config
 
-`promotion-assistant` is **config-bearing**, it reads all product copy, audiences, per-channel
-policy and credentials from a **separate, private** companion config repo. Full contract:
-[CONFIG.md](CONFIG.md) (schema reference: [reference/config-schema.md](skills/promotion-assistant/reference/config-schema.md)).
+Product settings and runtime DATA belong in a separate PRIVATE companion with committed history.
+See [CONFIG.md](CONFIG.md) for schema, credential keys and recovery. Selection order is explicit
+`--config`, `PROMO_CONFIG_DIR`, `PROMOTION_ASSISTANT_CONFIG`, `PROMOTION_ASSISTANT_CONFIG_DIR`,
+`~/.promotion-assistant-config`, then `~/.config/promotion-assistant-config`. Invalid selections fail.
 
-- **Mount (discovery order):** `$PROMO_CONFIG_DIR` (primary) → `$PROMOTION_ASSISTANT_CONFIG` →
-  `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
-  `~/.config/promotion-assistant-config/`. An explicit path or highest nonempty environment selection is authoritative and must validate.
-  Home directories apply only without an explicit/environment selection; a bad selection never falls through.
-- **First time:**
-  ```bash
-  cd skills/promotion-assistant
-  python scripts/init_config.py        # stamp a conformant skeleton (deterministic)
-  export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # or pass --out <dir> to init
-  # Fill product/channel configuration and commit the separate PRIVATE companion first.
-  python scripts/verify_config.py       # reports ready only after those prerequisites exist
-  python scripts/cli.py doctor --json  # runtime boundary and local channel setup
-  ```
-- **Explicit selection:** `python scripts/cli.py --config /path/to/private-companion init` checks an
-  existing config. Put `--config` before the subcommand; use `init_config.py --out` to create a skeleton.
-- **Email setup:** the configured helper must implement the complete
-  [reviewed-email-v1 contract](skills/promotion-assistant/reference/email-helper-contract.md).
-  An installed legacy helper or a message ID alone does not prove sender/content or make email ready.
-- **Switch configs (hot-swap):** point the env var at another config dir, configs are
-  self-contained, no other change: `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`.
-- **Secrets:** Mode B, `secrets/*` is gitignored and never enters git; back up out-of-band.
-  Credentials bridge into the active config via the config repo's forked `scripts/apply.py`.
+Run from the repository root:
+
+```bash
+python skills/promotion-assistant/scripts/init_config.py --out <private-companion>
+python skills/promotion-assistant/scripts/verify_config.py --config-dir <private-companion>
+```
+
+Fill product/registry `schema_version: 1`, product name and channel slug/platform; commit the
+companion and establish PRIVATE proof. The generated skeleton is not ready. Provider resources
+and credentials come from the selected `secrets/runtime.env` as `KEY=VALUE`. Dispatch binds that
+mapping per call without inheriting another product's ambient credentials or changing global env.
+`apply` now performs the local doctor check; it does not run the old companion helper or modify
+`~/.claude.json`.
+
+Clear stale higher-priority selectors before switching to B and rerun doctor. Live authorization
+remains the separate process-local `PROMO_LIVE_AUTHORIZED_<CHANNEL>` gate. READY establishes
+schema, PRIVATE and local-resource checks only; the email helper must implement reviewed-email-v1
+and live delivery requires separate verification. Restore credentials through the selected private
+backup policy or reauthorize. Real values never belong in the public source.
 
 ## How to invoke
 

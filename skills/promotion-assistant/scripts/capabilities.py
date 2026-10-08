@@ -6,7 +6,7 @@ from . import providers, private_storage
 
 
 def channels(cfg, env=None):
-    env = os.environ if env is None else env
+    env = cfg.runtime_env() if env is None else env
     rows = []
     for channel in cfg.channels():
         platform = channel.get('platform', channel.get('slug'))
@@ -16,7 +16,8 @@ def channels(cfg, env=None):
         configured = mode == 'manual-prep'
         if platform == 'email':
             configured = (channel.get('email_helper_contract') == providers.email_contract.CONTRACT
-                          and Path(env.get('PROMO_SEND_GMAIL') or providers.SEND_GMAIL_PS1).expanduser().is_file())
+                          and bool(env.get('PROMO_SEND_GMAIL'))
+                          and Path(env['PROMO_SEND_GMAIL']).expanduser().is_file())
         elif platform == 'discord':
             configured = bool(env.get('PROMO_DISCORD_BOT_TOKEN') and
                               str(env.get('PROMO_DISCORD_ANNOUNCE_CHANNEL_ID', '')).isdigit())
@@ -34,10 +35,12 @@ def doctor(cfg, env=None, channel=None):
     rows = channels(cfg, env)
     rows = [row for row in rows if channel is None or row['slug'] == channel]
     names = private_storage.publication_destinations(cfg.root)
-    checks = [{'name': 'PRIVATE DATA publication destinations: '+', '.join(names), 'ok': True},
+    checks = [{'name': message, 'ok': False} for message in cfg.settings_errors()]
+    checks += [{'name': 'PRIVATE DATA publication destinations: '+', '.join(names), 'ok': True},
               {'name': 'selected channels exist', 'ok': bool(rows)}]
     checks.extend({'name': row['slug']+' resources', 'ok': row['implemented'] and row['configured']}
                   for row in rows)
     return {'status': 'ready' if all(check['ok'] for check in checks) else 'not_ready',
+            'resolved_root': str(cfg.root), 'config_root': str(cfg.root),
             'checks': checks, 'channels': rows, 'live_proven': 'not_run',
             'scope': 'local implementation and resource checks; no live delivery probe'}

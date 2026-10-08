@@ -49,6 +49,8 @@ def wire_helper(case, monkeypatch, responder):
     helper = case['root']/'synthetic-mail.ps1'
     helper.write_text('# synthetic helper seam')
     monkeypatch.setattr(providers, 'SEND_GMAIL_PS1', helper)
+    (case['root'] / 'secrets').mkdir(exist_ok=True)
+    (case['root'] / 'secrets/runtime.env').write_text('PROMO_SEND_GMAIL='+str(helper)+'\n')
     calls = []
     def process(argv, **kwargs):
         request = json.loads(argv[argv.index('-RequestJson')+1])

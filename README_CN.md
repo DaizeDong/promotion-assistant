@@ -77,26 +77,22 @@ python scripts/cli.py report --funnel                 # 六层漏斗
 
 ## 配置
 
-`promotion-assistant` 是**带 config 的 skill**, 所有产品文案、受众、按渠道 policy 与凭证都放在一个
-**独立、私有**的伴随 config 仓。完整规范见 [CONFIG.md](CONFIG.md)(字段参考：[reference/config-schema.md](skills/promotion-assistant/reference/config-schema.md))。
+产品配置和运行数据放在独立、有提交历史的 PRIVATE 伴生仓。完整字段和恢复流程见 [CONFIG.md](CONFIG.md)。
+发现顺序为显式 `--config`、`PROMO_CONFIG_DIR`、`PROMOTION_ASSISTANT_CONFIG`、`PROMOTION_ASSISTANT_CONFIG_DIR`、`~/.promotion-assistant-config`、`~/.config/promotion-assistant-config`。选定目录无效时立即失败。
 
-- **挂载(发现顺序):** `$PROMO_CONFIG_DIR`(主)→ `$PROMOTION_ASSISTANT_CONFIG` →
-  `$PROMOTION_ASSISTANT_CONFIG_DIR` → `~/.promotion-assistant-config/` →
-  `~/.config/promotion-assistant-config/`。显式路径或优先级最高的非空环境变量一旦选定，就必须通过校验，失败不会转用另一个产品。
-  只有没有指定路径和环境变量时才查找家目录。所选目录须属于独立、有提交历史的私有伴生仓，所有 remote 的 fetch/push 目的地都须确认 PRIVATE。
-- **首次配置：**
-  ```bash
-  cd skills/promotion-assistant
-  python scripts/init_config.py        # 生成符合规范的 config 骨架(确定性)
-  export PROMO_CONFIG_DIR=~/.promotion-assistant-config   # 或给 init 传 --out <dir>
-  python scripts/verify_config.py       # doctor:逐项 PASS/FAIL,明确报缺什么
-  ```
-- **邮件设置：** helper 须实现完整的 [reviewed-email-v1 协议](skills/promotion-assistant/reference/email-helper-contract.md)，并在渠道中明确配置。
-  仅有旧 helper 文件或 message ID 不足以确认发件人和完整正文；安装环境仍需单独核验。
-- **切换 config(即插即用):** 把环境变量指向另一个 config 目录即可， config 自包含，无需任何别的改动：
-  `export PROMO_CONFIG_DIR=~/configs/product-a` ↔ `~/configs/product-b`。
-- **密钥：** Mode B, `secrets/*` 已 gitignore,永不入库；请用库外备份。凭证经 config 仓自带的
-  (从 companion config kit fork 的)`scripts/apply.py` 桥接进活动配置。
+从仓库根运行：
+
+```bash
+python skills/promotion-assistant/scripts/init_config.py --out <private-companion>
+python skills/promotion-assistant/scripts/verify_config.py --config-dir <private-companion>
+```
+
+填写 product 和 registry 的 `schema_version: 1`、产品名称、渠道 slug/platform，并把仓库提交到已证明 PRIVATE 的目的地。初始骨架尚未就绪。
+适配器凭据和资源从所选目录的 `secrets/runtime.env` 读取，格式为 `KEY=VALUE`；支持的键见 CONFIG。每次 dispatch 都绑定这份配置，不继承其他产品的进程级凭据，也不修改全局环境。
+`apply` 现在执行本地 doctor 校验，不调用伴生仓旧脚本、不写 `~/.claude.json`。
+
+切换前清除旧的高优先级选择变量，选择 B 后重新运行 doctor。渠道投递授权仍是单独的进程级 `PROMO_LIVE_AUTHORIZED_<CHANNEL>`，不会随凭据文件自动开启。
+READY 仅表示结构、PRIVATE 和本地资源检查通过；邮件 helper 仍须实现完整的 reviewed-email-v1 协议，真实投递另行核验。凭据按选定私有备份政策恢复或重新授权，公开仓绝不能保存真实值。
 
 ## 如何触发
 

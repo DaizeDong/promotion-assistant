@@ -36,6 +36,8 @@ def test_publication_report_delegates_without_clearing_process_policy(
 
 
 def instance(path, now):
+    (path.parent.parent / ".git").mkdir(exist_ok=True)
+    path.parent.mkdir(exist_ok=True)
     return throttle.Throttle(path, clock=lambda: now[0])
 
 
@@ -58,7 +60,7 @@ def saved_bucket(path):
 def test_zero_policy_blocks_existing_bucket_and_old_reservations(
         tmp_path, restart, retry, rollover):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     assert reserve(controller, "synthetic-initial", 50)[0]
     now[0] += 86400 if rollover else 1
@@ -75,7 +77,7 @@ def test_zero_policy_blocks_existing_bucket_and_old_reservations(
 @pytest.mark.parametrize("restart", [False, True])
 def test_reduced_limit_preserves_consumed_quota(tmp_path, spent, restart):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     controller._bucket("synthetic-account", "discord", "post", {"day_cap": 10})
     controller.save()
@@ -95,7 +97,7 @@ def test_reduced_limit_preserves_consumed_quota(tmp_path, spent, restart):
 
 def test_limit_changes_never_reset_usage_or_mint_midperiod_tokens(tmp_path):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     for index in range(7):
         assert reserve(controller, "synthetic-before-%d" % index, 10)[0]
@@ -113,7 +115,7 @@ def test_limit_changes_never_reset_usage_or_mint_midperiod_tokens(tmp_path):
 
 def test_policy_reduction_preserves_aimd_capacity_and_consumption(tmp_path):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     for index in range(2):
         assert reserve(controller, "synthetic-before-%d" % index, 20)[0]
@@ -135,7 +137,7 @@ def test_policy_reduction_preserves_aimd_capacity_and_consumption(tmp_path):
 
 def test_concurrent_reservations_share_the_reduced_current_limit(tmp_path):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     for index in range(2):
         assert reserve(controller, "synthetic-initial-%d" % index, 50)[0]
@@ -153,7 +155,7 @@ def test_concurrent_reservations_share_the_reduced_current_limit(tmp_path):
 @pytest.mark.parametrize("cap", [-1, float("nan"), float("inf")])
 def test_invalid_policy_is_checked_for_existing_buckets(tmp_path, cap):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     controller = instance(path, now)
     assert reserve(controller, "synthetic-initial", 10)[0]
     before = path.read_bytes()
@@ -165,7 +167,7 @@ def test_invalid_policy_is_checked_for_existing_buckets(tmp_path, cap):
 @pytest.mark.parametrize("learned,base,remaining", [(5, 20, 4), (15, 10, 7)])
 def test_legacy_aimd_bucket_waits_for_normal_refill(tmp_path, learned, base, remaining):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     assert reserve(instance(path, now), "synthetic-initial", base)[0]
     document = json.loads(path.read_text())
     bucket = next(iter(document["buckets"].values()))
@@ -187,7 +189,7 @@ def test_legacy_aimd_bucket_waits_for_normal_refill(tmp_path, learned, base, rem
 @pytest.mark.parametrize("usage", [-1, float("nan"), float("inf"), "synthetic-invalid"])
 def test_malformed_durable_usage_is_rejected_without_rewrite(tmp_path, usage):
     now = [1000.0]
-    path = tmp_path / "state.json"
+    path = tmp_path / "metrics/throttle-state.json"
     assert reserve(instance(path, now), "synthetic-initial", 10)[0]
     document = json.loads(path.read_text())
     next(iter(document["buckets"].values()))["period_used"] = usage

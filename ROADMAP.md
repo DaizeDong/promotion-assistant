@@ -8,6 +8,8 @@ The declared release remains v0.1.3. [Unreleased changes](CHANGELOG.md#unrelease
 later durable run/resume protocol, reviewed email contract, owned-account adapters and private
 storage requirements. Synthetic checks do not establish live publication.
 
+Current main binds provider resources from the selected companion, checks required schema/name/channel fields before READY, and declares durable scheduling retries plus staging. These are local contracts; live integration acceptance remains separate.
+
 ## v0.1.3
 - Discord own-server live transport, previously a deferred gap: `DiscordOwnServerProvider.publish`
   posts one announce message via the Discord REST API in live mode. Credentials come from the

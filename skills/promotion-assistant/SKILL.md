@@ -60,7 +60,7 @@ only pacing is courtesy, never classifier evasion. `reference/participation.md` 
 ```
 python scripts/cli.py init                       # locate/verify the product config repo
 python scripts/cli.py channels list              # registered channels + which have a live transport
-python scripts/cli.py apply                       # secrets -> active config (delegates; never echoes)
+python scripts/cli.py apply                       # validate selected-root runtime resources; no global mutation
 python scripts/cli.py plan --campaign <C>         # content calendar -> schedule-reminder
 python scripts/cli.py run  --campaign <C> --once  # gated dispatch (DRY-RUN by default)
 python scripts/cli.py prep --campaign <C> [--channel X]   # manual-prep: human-postable copy+checklist
@@ -108,3 +108,7 @@ behavior change ships, this is the self-evolve gate.
 ## Progressive loading
 
 This `SKILL.md` is the only always-loaded file. Read `reference/<shard>.md` on demand, one at a time.
+
+Before dispatch, use doctor on the selected root. Credentials bind to its `secrets/runtime.env`;
+changing roots cannot inherit another product's ambient provider values. READY covers local
+configuration and resources; live transport and delivery evidence remain separate.

@@ -3,8 +3,7 @@
 
   promotion-assistant --config DIR init             check an existing product config repo
   promotion-assistant channels   list                show registered channels + transport state
-  promotion-assistant apply                          bridge secrets -> active config (delegates to
-                                                       the config repo's own scripts/apply.py)
+  promotion-assistant apply                          validate selected-root runtime resources (no global mutation)
   promotion-assistant plan       --campaign C        build content calendar -> schedule-reminder
   promotion-assistant run        --campaign C [--once]   gated dispatch (DRY-RUN by default)
   promotion-assistant prep       --campaign C [--channel X]  manual-prep: emit human-postable copy +
@@ -75,15 +74,11 @@ def cmd_channels(args):
 
 
 def cmd_apply(args):
-    cfg = _load(args)
-    applier = cfg.root / "scripts" / "apply.py"
-    if not applier.is_file():
-        print("config repo has no scripts/apply.py (fork it from companion config kit). Skipping.")
-        return 1
-    print("delegating to", applier, "(never echoes secrets)")
-    r = subprocess.run(["python", str(applier)] + (["--dry-run"] if args.dry_run else []),
-                       cwd=str(cfg.root))
-    return r.returncode
+    from scripts.capabilities import doctor
+    result = doctor(_load(args))
+    result['apply'] = 'validated selected-root runtime resources; no global config mutation'
+    print(json.dumps(result, ensure_ascii=False))
+    return int(result['status'] != 'ready')
 
 
 def cmd_plan(args):
@@ -355,7 +350,7 @@ def cmd_authorize(args):
     print("To go LIVE on channel %r (irreversible outreach — only after you control the account):" % args.channel)
     print("  1) set product.json send_mode = \"live\"")
     print("  2) export PROMO_LIVE_AUTHORIZED_%s=<any-non-empty-token>" % ch)
-    print("  3) ensure the channel's secrets are applied (promotion-assistant apply)")
+    print("  3) configure secrets/runtime.env in the selected companion; run doctor")
     print("Until BOTH are present, dispatch() simulates and writes metrics/dry-run.jsonl (zero egress).")
     return 0
 

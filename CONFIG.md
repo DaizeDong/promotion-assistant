@@ -2,7 +2,7 @@
 
 `promotion-assistant` is **config-bearing**. The skill itself is product-agnostic: all product copy,
 audiences, per-channel policy, runtime metrics and credentials live in a **separate, private
-companion config repo** (Mode B). This file is the authoritative config contract (config-spec E1);
+companion config repo**. This file is the authoritative config contract (config-spec E1);
 the in-engine field reference is [`skills/promotion-assistant/reference/config-schema.md`](skills/promotion-assistant/reference/config-schema.md).
 
 ## Discovery convention (how the skill finds your config), E2
@@ -40,8 +40,7 @@ Local absolute helper/interpreter paths are resources and need not be inside the
   compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
   metrics/                      # versioned PRIVATE events, previews, bandit/throttle state and suppression
   metrics/runs/<run-id>.json     # versioned PRIVATE frozen intent and per-item receipts
-  secrets/<slug>.env            # [gitignored] real creds; only *.env.template + README committed
-  scripts/apply.py              # secrets -> active ~/.claude.json (forked from companion config kit; never echoes values)
+  secrets/runtime.env           # selected-root runtime resource mapping; private only
   runbooks/                     # new-machine.md, live-authorize.md, ban-recovery.md
 ```
 
@@ -51,7 +50,7 @@ Local absolute helper/interpreter paths are resources and need not be inside the
 |---|---|---|---|
 | `schema_version` | int | yes | config contract version (init stamps `1`); lets the engine migrate older configs |
 | `name` | str | yes | product name |
-| `send_mode` | enum `dry_run`\|`sim`\|`test_account`\|`live` | no (default `dry_run`) | **global send gate**; live also needs `PROMO_LIVE_AUTHORIZED_<CHANNEL>` |
+| `send_mode` | enum `dry_run`\|`live` | no (default `dry_run`) | **global send gate**; live also needs `PROMO_LIVE_AUTHORIZED_<CHANNEL>` |
 | `aff_base` | str | no | conversion anchor; per-channel ref = channel attribution |
 | `banned_claims` | list[str] | no | compliance lint blocklist |
 | `compliance.physical_address` | str | no (recommended) | CAN-SPAM footer |
@@ -80,21 +79,21 @@ python scripts/init_config.py             # -> ~/.promotion-assistant-config/  (
 export PROMO_CONFIG_DIR=~/.promotion-assistant-config
 
 # 3. Use a separate Git companion with a committed HEAD and PRIVATE fetch/push destinations on every remote.
-# 4. Fill product.json + registry.json + channels/<slug>/policy.json, add secrets/<slug>.env,
-#    fork scripts/apply.py from companion config kit, then confirm it is ready:
+# 4. Fill product.json + registry.json + channels/<slug>/policy.json and secrets/runtime.env;
+#    commit the PRIVATE companion and confirm local readiness:
 python scripts/verify_config.py           # doctor: PASS/FAIL per check, names what is missing
 ```
 
 `init_config.py` is template-driven and deterministic, re-running it (same `--out`) produces a
 byte-identical skeleton, so two operators generate the same structure (E4). It intentionally does
-**not** generate `apply.py`: that single mechanism is forked from `companion config kit`, keeping one
-source of truth (no conflicting second bridge).
+**not** generate or require a companion `apply.py`. The source reads `secrets/runtime.env`
+for each selected configuration; source `apply` performs doctor validation without global mutation.
 
 ## Switching between configs (hot-swap), E5
 
-A config dir is self-contained (`config.py` reads everything relative to the config root, no
-hardcoded paths). Keep as many product configs as you like and switch by repointing the env var,
-no other change:
+A selected root owns product data and `secrets/runtime.env`. Clear stale higher-priority selectors,
+select the new root and rerun doctor. Credential binding changes with that root. Live authorization
+remains process-local and must be reviewed for the selected product:
 
 ```bash
 export PROMO_CONFIG_DIR=~/configs/product-a     # config A
@@ -152,18 +151,25 @@ exits zero only for `complete` or `simulated`. Successful `prep` is `prepared`, 
 delivery. Keep runtime DATA under version control in the PRIVATE companion, including dry logs.
 
 `channels list --json` separates implementation, configuration and live proof.
-`doctor --json --channel SLUG` checks selected local resources without delivery probes or reading
-credential contents. Scheduling is complete only after the base returns successful JSON receipts
+`doctor --json --channel SLUG` checks selected local resources without delivery probes. It reads the selected resource file
+but never prints credential values. Scheduling is complete only after the base returns successful JSON receipts
 with task IDs; unavailable or failed registration makes `plan` exit nonzero.
 
-## Secrets, Mode B (E6)
+## Private credentials (E6)
 
-The companion config repo is **separate and private**, and `secrets/*` there is **gitignored**,
-promo OAuth/SMTP creds are high blast-radius and auto-revoked, so they never enter git (the
-market-intel "Mode A" rationale does not apply). Only `*.env.template` + README are committed; back
-real values up out-of-band. Credentials are bridged into the active `~/.claude.json` by the config
-repo's own `scripts/apply.py`, which never echoes values. This public skill repo also gitignores
-`secrets/`, `*.env`, `metrics/` and `.claude.json` defensively, it must never hold product secrets.
+The companion config repo is **separate and private**. Direct-child `secrets/*.env` files are
+core, versioned artifacts under the source storage contract; keep them in that PRIVATE
+companion and restore them with its reviewed credential history. Runtime adapters read
+`secrets/runtime.env`; no MCP template or companion apply script is required. Its allowed keys are
+`PROMO_SEND_GMAIL`, `PROMO_DISCORD_BOT_TOKEN`, `PROMO_DISCORD_ANNOUNCE_CHANNEL_ID`,
+`PROMO_DISCORD_ALLOW_EMBED`, `PROMO_MASTODON_INSTANCE`, `PROMO_MASTODON_TOKEN`,
+`PROMO_BLUESKY_HANDLE` and `PROMO_BLUESKY_APP_PASSWORD`. Use UTF-8 `KEY=VALUE` lines;
+blank/comment lines and matching quotes are supported, shell expansion is not. Unknown or duplicate
+keys fail without echoing values. A relative email-helper path is rooted in the selected companion.
+Missing bindings report not_ready for automated channels. Manual-prep channels require valid
+product/registry schema and selected channel registration, but no provider credentials.
+`PROMO_LIVE_AUTHORIZED_*` is deliberately not loaded from this file. The public source ignores
+credential files defensively; real values belong only in approved private storage.
 
 
 ## Email helper setup
@@ -213,3 +219,5 @@ base's update or snooze operation on the existing task.
 The current `day_cap` is a hard admission ceiling, including retries. Lowering it preserves the current period and its consumed quota. Setting it to zero disables admission immediately. Raising it does not add tokens before the next normal refill.
 
 AIMD capacity remains separate from that ceiling. Refill uses the lower of the learned capacity and the current policy limit. Legacy buckets without consumption metadata cannot recover exact usage from clipped AIMD tokens; they keep their period and learned capacity, but wait for normal refill before admitting another request.
+
+Schedule requests persist as `metrics/schedule-requests/<64-hex-digest>.json` with title, due_at, idempotency_key, ext and description. Restore exact receipts with scheduler registrations before retrying. Their adjacent `.<digest>.json-<suffix>` staging and lock files are source-declared; interrupted files stay until transaction and registration outcomes are known.

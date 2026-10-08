@@ -23,8 +23,11 @@ def owned(case, monkeypatch, request):
     (root / 'channels' / platform).mkdir()
     (root / 'channels' / platform / 'policy.json').write_text(json.dumps(case['policy']))
     cfg = config.Config(root)
-    for key, value in SAMPLE['credentials'].items():
-        monkeypatch.setenv(key, value)
+    resources = dict(SAMPLE['credentials'])
+    def save_resources():
+        (root / 'secrets').mkdir(exist_ok=True)
+        (root / 'secrets/runtime.env').write_text(''.join(key+'='+value+'\n' for key, value in resources.items()))
+    save_resources()
     lookup, posts = [], []
 
     class Reply:
@@ -54,12 +57,13 @@ def owned(case, monkeypatch, request):
         return json.loads((root / 'metrics/runs' / (case['run_id'] + '.json')).read_text())
 
     return dict(sample=sample, platform=platform, run=run, saved=saved, lookups=lookup, posts=posts,
-                path=root / 'metrics/runs' / (case['run_id'] + '.json'))
+                path=root / 'metrics/runs' / (case['run_id'] + '.json'), resources=resources, save_resources=save_resources)
 
 
 def test_configured_identity_mismatch_prevents_auth_and_publish(owned, monkeypatch):
     for key, value in owned['sample']['wrong_environment'].items():
-        monkeypatch.setenv(key, value)
+        owned['resources'][key] = value
+    owned['save_resources']()
     result = owned['run']()
     assert result['status'] == 'failed'
     assert owned['lookups'] == [] and owned['posts'] == []

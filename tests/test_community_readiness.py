@@ -118,3 +118,27 @@ def test_cli_readiness_labels_the_next_promotional_allowance(case, capsys, gives
     assert result == 0
     assert ('=> READY' if ready else '=> NOT READY') in output.out
     assert 'next promotional post' in output.out
+
+
+
+@pytest.mark.parametrize('gives, asks, ready', [(3, 0, False), (8, 0, False),
+                                              (9, 1, False), (9, 0, True), (18, 1, True)])
+def test_readiness_requires_room_for_the_next_promotional_post(gives, asks, ready):
+    ledger = [{'type': 'give'}] * gives + [{'type': 'ask'}] * asks
+    result = participation.readiness(
+        {'age_days': 30, 'karma': 100, 'sub_gives': gives, 'mod_strikes': 0}, ledger)
+    assert result['ready'] is ready
+    assert result['ledger']['next_ask_ok'] is ready
+    criterion = next(item for item in result['criteria'] if item['key'] == 'ledger_9to1')
+    assert criterion['met'] is ready and 'next promotional post' in criterion['detail']
+
+
+@pytest.mark.parametrize('gives, asks, ready', [(3, 0, False), (8, 0, False),
+                                              (9, 1, False), (9, 0, True), (18, 1, True)])
+def test_cli_readiness_labels_the_next_promotional_allowance(case, capsys, gives, asks, ready):
+    record(case, 'community_alpha', count=gives)
+    record(case, 'community_alpha', kind='ask', count=asks)
+    result, output = status(case, capsys, 'community_alpha')
+    assert result == 0
+    assert ('=> READY' if ready else '=> NOT READY') in output.out
+    assert 'next promotional post' in output.out

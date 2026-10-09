@@ -1,10 +1,10 @@
 # promotion-assistant
 
-多渠道产品推广，自带漏斗量化与自我调优， 默认 dry-run，合规 fail-closed。
+规划多渠道产品推广，逐个审核投递目的地，用 Thompson Sampling bandit 分析漏斗反馈。发送默认使用 dry-run。
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange?style=flat)](https://docs.anthropic.com/en/docs/claude-code)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Languages](https://img.shields.io/badge/Languages-EN%20%2F%20CN-blue?style=flat)](#languages)
+[![Languages](https://img.shields.io/badge/Languages-EN%20%2F%20CN-blue?style=flat)](#语言)
 [![Roadmap](https://img.shields.io/badge/Roadmap-v0.1.3-purple?style=flat)](ROADMAP.md)
 
 [English](README.md) | [中文版](README_CN.md)
@@ -27,14 +27,14 @@ bandit 依靠已记录的反馈学习，所以事件身份和归因与选择公�
 
 [完整设计理念](PHILOSOPHY.md)。
 
-## 它是什么(不是什么)
+## 适用范围
 
-**是**：一个薄的、产品无关的编排器，用于把「已发布」的产品做多渠道推广并量化反馈， 覆盖式(群发邮件 +
-多平台发帖) 与 精准式(论坛回帖 + 私信)、每日多账号养号、六层转化漏斗、以及一个会自调优的 Thompson
-Sampling bandit。所有产品文案/受众/凭证都放在「独立私有 config 仓」。
+本工具编排已发布产品的推广，包括群发邮件、多平台发帖、论坛回复和私信准备，提供账号活动规划、
+六层转化漏斗，以及根据已有反馈选择策略的 Thompson Sampling bandit。产品文案、受众和凭据
+保存在独立的 PRIVATE 伴生仓中。
 
-**不是**：垃圾轰炸机；不是调度引擎(调度委托 `schedule-reminder`)；不是市场调研工具(那是 `market-intel`)。
-不绕过任何平台 ToS，构建/测试期绝不向真实受众发送。
+调度交给 `schedule-reminder`，市场与竞品研究使用 `market-intel`。构建和测试不向真实受众发送。
+获得授权的实际推广仍须遵守平台条款和对应渠道要求。
 
 ## 安装
 
@@ -49,20 +49,14 @@ git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.
 cd ~/.claude/plugins/promotion-assistant
 ```
 
-然后建一个「每产品 config 仓」(fork `companion config kit` 模板，Mode B secrets)并指向它：
-`export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`。
+需要 Python 3.11 以上和 Git。JSON 配置不需要额外 Python 包，YAML 还需 PyYAML。
+运行快速开始前，先按下面的配置步骤建立独立的 PRIVATE 伴生仓。运行时核验
+`~/.pii-guard/visibility.json` 中的本地 PRIVATE 回执，不会调用 `gh` 或刷新缺失、过期的证据。
+证明流程见[伴生仓约定](guards/COMPANION.md#verifying-a-companion)。
 
-需要 Python 3.11 以上、Git，以及 `~/.pii-guard/visibility.json` 中未过期的 PRIVATE 可见性回执。
-运行时由固定版本的 Guards API 核验本地回执和 Git 配置，不会调用 `gh` 或自动刷新回执。
-回执缺失或过期时，请先按[伴生仓约定](guards/COMPANION.md#verifying-a-companion)完成初始化或刷新。
-JSON 配置不需要额外 Python 包，YAML 配置还需 PyYAML。下面的命令从克隆后的仓库目录开始运行。
-提醒功能需设置 `PROMO_REMINDER_PY`，指向已安装的 `reminder.py`；先运行
-`python "$PROMO_REMINDER_PY" ensure --help` 检查接口，再用 `init` 初始化本地存储。
-托管安装应使用当前运行环境的 Python 和提醒脚本，只有旧 `add` 命令的版本不兼容。
-
-`python scripts/cli.py --config /path/to/private-companion init` 用于检查已有配置，
-`--config` 要放在子命令前。创建配置骨架用 `init_config.py --out`；填好配置并在独立私有仓提交后，
-`verify_config.py` 才能报告 ready。
+活动规划还需要兼容的 `schedule-reminder`。按[集成设置](skills/promotion-assistant/reference/integration.md#schedule-reminder-the-only-scheduling-surface)
+选择 `PROMO_REMINDER_PY`，检查 `creation-preflight`、`ensure`，并用当前运行环境的 Python
+初始化存储。只有旧 `add` 命令的版本不兼容。
 
 ## 快速开始
 
@@ -77,8 +71,8 @@ python scripts/cli.py report --funnel                 # 六层漏斗
 
 ## 配置
 
-产品配置和运行数据放在独立、有提交历史的 PRIVATE 伴生仓。完整字段和恢复流程见 [CONFIG.md](CONFIG.md)。
-发现顺序为显式 `--config`、`PROMO_CONFIG_DIR`、`PROMOTION_ASSISTANT_CONFIG`、`PROMOTION_ASSISTANT_CONFIG_DIR`、`~/.promotion-assistant-config`、`~/.config/promotion-assistant-config`。选定目录无效时立即失败。
+建立独立、有提交历史的 PRIVATE 伴生仓，并将 `PROMO_CONFIG_DIR` 指向它。
+[CONFIG.md](CONFIG.md)规定完整发现顺序、字段、凭据键和切换步骤；[DATA.md](DATA.md)规定保留和恢复。
 
 从仓库根运行：
 
@@ -87,12 +81,15 @@ python skills/promotion-assistant/scripts/init_config.py --out <private-companio
 python skills/promotion-assistant/scripts/verify_config.py --config-dir <private-companion>
 ```
 
-填写 product 和 registry 的 `schema_version: 1`、产品名称、渠道 slug/platform，并把仓库提交到已证明 PRIVATE 的目的地。初始骨架尚未就绪。
-适配器凭据和资源从所选目录的 `secrets/runtime.env` 读取，格式为 `KEY=VALUE`；支持的键见 CONFIG。每次 dispatch 都绑定这份配置，不继承其他产品的进程级凭据，也不修改全局环境。
-`apply` 现在执行本地 doctor 校验，不调用伴生仓旧脚本、不写 `~/.claude.json`。
+骨架还需要填写 product/registry 的 `schema_version: 1`、产品名称和渠道 slug/platform，并完成
+PRIVATE fetch/push 证明及选定提供方的资源配置。初始化结束不代表就绪。初始化器仍生成旧凭据排除
+规则；将必需的 `secrets/*.env` 纳入版本管理前，先执行[仅限伴生仓的修正步骤](CONFIG.md#first-time-setup-e3)。
+提供方映射从所选目录的 `secrets/runtime.env` 读取，格式为 `KEY=VALUE`。
 
-切换前清除旧的高优先级选择变量，选择 B 后重新运行 doctor。渠道投递授权仍是单独的进程级 `PROMO_LIVE_AUTHORIZED_<CHANNEL>`，不会随凭据文件自动开启。
-READY 仅表示结构、PRIVATE 和本地资源检查通过；邮件 helper 仍须实现完整的 reviewed-email-v1 协议，真实投递另行核验。凭据按选定私有备份政策恢复或重新授权，公开仓绝不能保存真实值。
+切换前清除优先级更高的旧变量，再运行 doctor。`init` 检查已有配置，全局 `--config` 必须放在
+子命令前；`apply` 执行本地 doctor，不运行历史伴生仓 helper，也不修改 `~/.claude.json`。
+READY 只验证结构、PRIVATE 和本地资源。实际投递还须通过独立的进程级
+`PROMO_LIVE_AUTHORIZED_<CHANNEL>` 授权并取得提供方回执；邮件另需 `reviewed-email-v1` helper。
 
 ## 如何触发
 
@@ -110,7 +107,8 @@ dry-run 下 `run --once` 返回 `run_id`、`status`、`counts` 和完整的 `ite
 - 邮件、自有服 Discord、Mastodon 和 Bluesky 已有自动发送接口；已登记的人工渠道使用 `prep`，
   X 和未知平台暂不支持自动发送。自动发送仍需逐渠道授权，并取得匹配的远端回执。
   `channels list --json` 分别列出实现情况、本地配置和实发证据；合成测试不算实发证据。
-- 平台 ToS 灰区无法消除；节流/拟人层只降低、不消除封号概率。
+- 平台条款和账号限制仍然适用。节流/拟人层用于限制活动风险，但不能据此认定平台已认可活动，
+  也不能认定封号概率已经通过测量降低。
 
 ## 语言
 

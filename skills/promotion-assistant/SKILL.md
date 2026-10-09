@@ -5,18 +5,17 @@ description: Automate multi-channel product promotion (email/posts/forum/DM), tr
 
 # promotion-assistant
 
-> Governing principle (full text in the repo's `PHILOSOPHY.md`): **methodology is constant, signals
-> adapt; compliance is engineering not goodwill; dry-run is the default, not an option.** The channel
-> matrix, six-layer funnel, bandit and compliance gate are fixed; every platform limit, audience and
-> piece of copy lives in per-product config. No outbound action ever leaves the machine unless the
-> product is explicitly set live AND that channel is individually authorized.
+The public skill owns the channel matrix, six-layer funnel, selection and compliance logic.
+Product limits, audiences, copy and credentials belong in the selected PRIVATE companion.
+Live promotional dispatch requires product live mode and per-channel authorization.
+See [design rationale](../../PHILOSOPHY.md) and [configuration](../../CONFIG.md).
 
 ## When to use / when to stop
 
 - **Use** when promoting a *shipped* product across many channels with quantified feedback: bulk
   email + multi-platform posting (覆盖式) and forum replies + DMs (精准式), with daily multi-account
   upkeep, funnel attribution, and self-evolving tactics.
-- **Stop / route elsewhere:** a one-off single post → just post it. Pure market/competitor research
+- **Route elsewhere:** use the host's single-post workflow for a one-off post within the user's authorization. Pure market/competitor research
   → `market-intel`. Scheduling/reminders themselves → this skill *delegates* to the
   `schedule-reminder` base (it does not reimplement scheduling).
 
@@ -24,7 +23,7 @@ description: Automate multi-channel product promotion (email/posts/forum/DM), tr
 
 | layer | job | shard |
 |---|---|---|
-| L0 config/creds | locate per-product config (`PROMO_CONFIG_DIR`, Mode B secrets) | `reference/config-schema.md` |
+| L0 config/creds | locate per-product config and PRIVATE credentials (`PROMO_CONFIG_DIR`) | `reference/config-schema.md` |
 | L1 orchestration | plan→`schedule-reminder`; run `--once/--daemon`; alerts→Discord relay | `reference/integration.md` |
 | L2 channels | one provider/platform (`publish/engage/dm/read_metrics`) | `reference/channels.md` |
 | L3 compliance/throttle | fail-closed gate + token-bucket+AIMD + warmup + the dry-run exit | `reference/compliance.md` |
@@ -57,6 +56,10 @@ only pacing is courtesy, never classifier evasion. `reference/participation.md` 
 
 ## CLI
 
+Before dispatch, run doctor against the selected root. Provider resources bind to its
+`secrets/runtime.env`; READY covers local configuration and resources, not live delivery.
+Run the following commands from `skills/promotion-assistant`.
+
 ```
 python scripts/cli.py init                       # locate/verify the product config repo
 python scripts/cli.py channels list              # registered channels + which have a live transport
@@ -69,7 +72,8 @@ python scripts/cli.py participate draft --url <source-thread> --title .. --body 
 python scripts/cli.py participate status --sub <community> --age-days N --karma N  # review participation readiness
 python scripts/cli.py participate record --url <comment-permalink> --thread <source-thread> --type give|ask [--draft-id <draft-id>]
 python scripts/cli.py authorize --channel <X>     # the exact per-channel live-unlock steps
-python scripts/cli.py report --funnel | --bandit  # funnel + arm convergence
+python scripts/cli.py report --funnel             # funnel
+python scripts/cli.py report --bandit             # arm convergence
 python scripts/cli.py doctor                       # health / compliance / dry-run self-check
 ```
 
@@ -87,16 +91,17 @@ The source thread and final `give` or `ask` type are required for every particip
 3. **Throttle + humanize.** token-bucket + AIMD (429 → halve + cooldown), warmup state machine (no
    level-skipping), lognormal jitter, per-account variants + content-hash dedup. Random delay alone
    is NOT safety.
-4. **Secrets = Mode B.** Promo OAuth/SMTP creds are high blast-radius + auto-revoked → `secrets/*`
-   is always gitignored in the config repo. Real copy, audiences, consent and runtime DATA are
-   versioned in a separate verified PRIVATE companion; none belong in this public skill tree.
+4. **Private storage.** Real copy, audiences, consent, runtime DATA and source-declared
+   `secrets/*.env` credentials are versioned in the verified PRIVATE companion. Follow
+   [CONFIG.md](../../CONFIG.md#first-time-setup-e3) to correct the initializer's obsolete exclusions.
+   No real values belong in this public skill tree.
 5. **Don't reimplement the base.** Scheduling → `schedule-reminder` CLI only (never its .db/SQL);
-   alerts → the existing Discord relay; email → the machine's `send-gmail.ps1` link.
+   alerts → the configured Discord relay; email → the configured `reviewed-email-v1` helper.
 6. **Failure = explicit gap.** A channel with no compliant automated transport is registered as a
    `deferred-gap`, never silently dropped.
 7. **Review and resume.** `run --run-id ID` freezes full per-destination payloads; `run --run-id ID
    --resume` uses that saved set and rechecks consent/suppression. Completed items never repeat.
-   Uncertain provider outcomes require reconciliation proof before retry; see `CONFIG.md`.
+   Uncertain provider outcomes require reconciliation proof before retry; see [CONFIG.md](../../CONFIG.md).
 
 ## Acceptance / regression
 
@@ -108,7 +113,3 @@ behavior change ships, this is the self-evolve gate.
 ## Progressive loading
 
 This `SKILL.md` is the only always-loaded file. Read `reference/<shard>.md` on demand, one at a time.
-
-Before dispatch, use doctor on the selected root. Credentials bind to its `secrets/runtime.env`;
-changing roots cannot inherit another product's ambient provider values. READY covers local
-configuration and resources; live transport and delivery evidence remain separate.

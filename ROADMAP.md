@@ -8,31 +8,16 @@ The declared release remains v0.1.3. [Unreleased changes](CHANGELOG.md#unrelease
 later durable run/resume protocol, reviewed email contract, owned-account adapters and private
 storage requirements. Synthetic checks do not establish live publication.
 
-Current main binds provider resources from the selected companion, checks required schema/name/channel fields before READY, and declares durable scheduling retries plus staging. These are local contracts; live integration acceptance remains separate.
+Current main binds provider resources from the selected companion, checks required
+schema/name/channel fields before READY, and retains durable scheduling requests and staging.
+Email uses the reviewed helper contract. Discord own-server, Mastodon and Bluesky adapters
+require the existing live gates and verified provider receipts. Compliance handles normalized
+claim text, suppression aliases and email-like payloads even when transport labels differ.
+These are local contracts; live acceptance remains separate.
 
-## v0.1.3
-- Discord own-server live transport, previously a deferred gap: `DiscordOwnServerProvider.publish`
-  posts one announce message via the Discord REST API in live mode. Credentials come from the
-  environment, never the repo, and the two-switch fail-closed gate is unchanged. A 429 maps to
-  `throttled` so the caller's AIMD reacts to a real rate limit. Guarded by
-  `tests/test_discord_live.py` (7 cases, network mocked).
-
-## v0.1.2
-- Compliance-matcher evasion hardening: banned-claim/body matching now NFKC-normalizes, strips
-  zero-width/format chars, and folds common Cyrillic/Greek homoglyphs; suppression matching folds
-  `+tag` aliases + case/unicode; CAN-SPAM fires when a payload is email-like (recipient/channel),
-  not only when `transport=="smtp"` (so a mislabeled transport can't skip it). Guarded by
-  `tests/test_compliance_hardening.py`.
-- CLI: all subcommands surface a friendly "no config" message instead of an uncaught traceback.
-- Added `CONTRIBUTING.md` (repo-spec completeness).
-
-## v0.1.1
-- Six-layer architecture: config (Mode B) · orchestration (schedule-reminder + relay) · channel
-  providers · compliance/throttle (fail-closed dry-run exit) · metrics (funnel + attribution) ·
-  bandit (discounted Thompson Sampling).
-- Dual-line engine: blast (email via send-gmail.ps1, multi-platform posting) + precision (forum/DM)
-  with email + own-server Discord as live transports; Mastodon/Bluesky/Reddit/X/PH/HN as deferred-gaps.
-- Acceptance gate E1-E12 (`selftest.py`), all passing, zero egress.
+Version-specific behavior and test counts are retained in [CHANGELOG.md](CHANGELOG.md).
+The initializer's credential exclusions still require the adjustment documented in
+[CONFIG.md](CONFIG.md#first-time-setup-e3) before the companion meets the current storage contract.
 
 ## Built + tested, pending wire-in
 These are implemented as stdlib libraries with their own acceptance tests today, but are NOT yet

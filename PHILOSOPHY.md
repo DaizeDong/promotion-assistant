@@ -1,54 +1,46 @@
 # promotion-assistant, Design Philosophy
 
-> One test governs every change: **does it fix the framing, or just patch a symptom?**
+Promotion combines changing platform policies, irreversible outreach and feedback-driven
+selection. The design separates these concerns so product changes can be reviewed without
+copying the engine or treating simulated results as delivery evidence.
 
-Promotion tooling fails in three predictable ways: it hardcodes platform rules that rot, it treats
-compliance/safety as an afterthought bolted on top, and it optimizes vanity metrics until it becomes
-a spam machine that gets every account banned. Each principle below changes the *assumption
-underneath* one of those failures, not the symptom on top.
+## P1: Separate stable methods from product policy
 
-## P1, Methodology is constant; signals adapt
-- **Symptom patch:** ship the current X/Reddit/email limits and copy inside the tool; chase each
-  platform policy change with a code edit.
-- **Root cause:** the *method* (channel matrix, six-layer funnel, bandit, compliance gate) is stable;
-  the *values* (caps, audiences, copy, thresholds) drift constantly. So they must live in different
-  places.
-- **Decision it produced:** a product-agnostic public skill + a private per-product config repo
-  (`PROMO_CONFIG_DIR`). Per-channel policy supplies limits, and observed rate-limit responses inform throttling.
+The channel matrix, six-layer funnel, selection rule and compliance gate are reusable methods.
+Caps, audiences, copy and thresholds change with products and platforms. Keep reusable code in
+the public skill and product values in the PRIVATE companion selected by `PROMO_CONFIG_DIR`.
+Per-channel policy supplies limits; observed rate-limit responses inform throttling.
+Provider resources bind to that selected companion on every dispatch, so switching products
+does not inherit another product's ambient credentials. Source-owned artifact admission makes
+each new output kind an explicit design decision.
 
-## P2, Compliance is engineering, not goodwill
-- **Symptom patch:** a checklist and a "please remember to add an unsubscribe link."
-- **Root cause:** anything left to discipline eventually leaks; the only reliable control is a gate
-  on every supported live dispatch path; deployment still needs independent validation.
-- **Decision it produced:** a fail-closed compliance gate (CAN-SPAM/GDPR/suppression) on the send
-  path, and ban/spam/unsub encoded as **strong-negative reward** so the optimizer internalizes the
-  red-lines instead of needing an external rule patch for every new evasion.
+## P2: Check compliance on each dispatch
 
-## P3, Dry-run is the default, not an option
-- **Symptom patch:** a `--dry-run` flag the operator must remember to pass.
-- **Root cause:** real outreach is irreversible, disturbs real people, and risks bans, the *safe*
-  state must be the one you fall into when you do nothing.
-- **Decision it produced:** a single `dispatch()` exit that fail-closed requires
-  `send_mode=="live"` AND a per-channel authorize token; absent either, it runs the full pipeline and
-  writes private simulated events and previews without provider dispatch. Those records exercise
-  orchestration and cannot establish delivery or real conversion.
+A reminder to include an unsubscribe link does not enforce a sending requirement. Supported live
+dispatch paths therefore apply fail-closed CAN-SPAM, GDPR and suppression checks. Ban, spam and
+unsubscribe feedback contributes strong-negative reward to the optimizer, alongside the explicit
+send gate. Deployment still needs independent validation; reward design cannot replace that gate.
 
-## P4, Own the seam, delegate the engines
-- **Symptom patch:** reimplement scheduling, notification and SMTP inside the skill.
-- **Root cause:** those are solved bases on this machine; duplicating them creates drift and bugs.
-- **Decision it produced:** scheduling → the `schedule-reminder` CLI contract (never its DB), alerts →
-  the configured Discord relay, email → an explicitly configured helper implementing the complete
-  `reviewed-email-v1` request and receipt contract. A legacy helper alone does not make email ready.
+## P3: Default to simulated dispatch
 
-## P5, Proven, not generated
-- **Symptom patch:** "the code looks right."
-- **Root cause:** a promotion system that silently miscounts a funnel, lets the bandit lock onto a
-  stale arm, or leaks a real send is worse than none.
-- **Decision it produced:** `selftest.py` (E1-E12) machine-judges metrics exactness, bandit
-  convergence + drift recovery, throttle limits, compliance fail-closure, dry-run zero-egress,
-  propensity completeness, anti-fingerprint, delayed-conversion censoring and idempotency. No
-  behavior ships until they pass; a failure is an explicit gap, never a silent ship.
+Outreach affects real recipients and cannot be fully reversed. The single `dispatch()` exit
+requires both `send_mode=="live"` and per-channel authorization. Without both, it runs the
+pipeline and writes PRIVATE simulated events and previews without provider dispatch. Those
+records exercise orchestration; they do not establish delivery or real conversion.
 
-Provider identity must follow product selection. Binding resources from the selected companion
-for each dispatch prevents a process-level credential from silently surviving a product switch.
-Source-owned artifact admission also makes a new output kind an explicit design decision.
+## P4: Reuse scheduling, alerts and email contracts
+
+Separate engines own scheduling, notification and mail delivery. Calling their supported
+interfaces avoids maintaining competing copies of their state and behavior. Scheduling uses the
+`schedule-reminder` CLI, never its database; alerts use the configured Discord relay; email uses
+an explicitly configured helper implementing the complete `reviewed-email-v1` request and receipt
+contract. A legacy email helper alone does not establish readiness.
+
+## P5: Require measured regression evidence
+
+Incorrect funnel counts, stale-arm selection and unintended sending can invalidate the system's
+results. `selftest.py` (E1-E12) checks metrics exactness, bandit convergence and drift recovery,
+throttle limits, compliance fail-closure, dry-run zero-egress, propensity completeness,
+anti-fingerprint, delayed-conversion censoring and idempotency. Applicable checks must pass before
+behavior changes ship. Report failures and missing coverage explicitly; successful synthetic
+checks do not establish live integration behavior or campaign outcomes.

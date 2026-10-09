@@ -79,8 +79,8 @@ is no inter-post timing jitter tuned to survive detection.
 
 ## Setup
 
-Register a Reddit "script" app at reddit.com/prefs/apps; put credentials in a **gitignored**
-`secrets/reddit.env`: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`,
+Register a Reddit "script" app at reddit.com/prefs/apps; store credentials in the PRIVATE
+versioned `secrets/reddit.env` under [CONFIG.md](../../../CONFIG.md#private-credentials-e6): `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`,
 `REDDIT_PASSWORD`, `REDDIT_USER_AGENT`. Without it, `discover` degrades to emitting search queries
 you run through your own tooling. The copilot never stores or echoes secrets.
 

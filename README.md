@@ -1,6 +1,6 @@
 # promotion-assistant
 
-Multi-channel product promotion that quantifies its own funnel and self-tunes, dry-run by default, compliance fail-closed.
+Plan product promotion across channels, review each destination, and track funnel feedback with a Thompson-Sampling bandit. Dispatch defaults to dry-run.
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange?style=flat)](https://docs.anthropic.com/en/docs/claude-code)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -30,16 +30,16 @@ provider acceptance and actual conversion remain separate evidence.
 
 [Read the full design philosophy](PHILOSOPHY.md).
 
-## What it is (and isn't)
+## Scope
 
-**Is:** a thin, product-agnostic orchestrator for promoting a *shipped* product across many channels
-with quantified feedback, blast (bulk email + multi-platform posting) and precision (forum replies +
-DMs), daily multi-account upkeep, a six-layer conversion funnel, and a Thompson-Sampling bandit that
-self-tunes tactics. All product copy/audiences/credentials live in a **separate private config repo**.
+The orchestrator supports promotion of shipped products through bulk email, platform posts,
+forum replies and direct-message preparation. It includes account activity planning, a six-layer
+conversion funnel and a Thompson-Sampling bandit for selecting tactics from recorded feedback.
+Product copy, audiences and credentials belong in a separate PRIVATE companion.
 
-**Isn't:** a spam cannon, a scheduling engine (it delegates to `schedule-reminder`), or a market-
-research tool (that's `market-intel`). It will not bypass platform ToS or send to real audiences
-during build/test.
+Scheduling uses `schedule-reminder`; market and competitor research uses `market-intel`.
+Builds and tests run without sending to real audiences. Platform terms and the supported
+channel requirements continue to apply to authorized live activity.
 
 ## Install
 
@@ -54,19 +54,16 @@ git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.
 cd ~/.claude/plugins/promotion-assistant
 ```
 
-Then create a separate committed Git companion with PRIVATE fetch and push destinations on every
-remote (fork the `companion config kit` template with versioned private credentials), and point the skill at it: `export PROMO_CONFIG_DIR=~/CodesClaude/<product>-promo-config`.
+Use Python 3.11 or newer and Git. JSON configuration needs no extra Python package;
+YAML also needs PyYAML. Configure the separate PRIVATE companion below before running the
+quick start. Runtime storage verifies the local PRIVATE receipt at
+`~/.pii-guard/visibility.json`; it does not call `gh` or refresh missing/stale evidence.
+Follow the [companion contract](guards/COMPANION.md#verifying-a-companion) for that proof.
 
-Use Python 3.11 or newer, Git, and a fresh PRIVATE visibility receipt at
-`~/.pii-guard/visibility.json`. The pinned Guards API checks that local receipt and the actual Git
-configuration; runtime storage checks do not call `gh` or refresh missing/stale evidence. See the
-[companion contract](guards/COMPANION.md#verifying-a-companion) before initializing or refreshing
-the receipt. JSON configuration needs no extra Python package; YAML configuration also needs PyYAML.
-Run the commands below from the cloned repository. For reminders, set `PROMO_REMINDER_PY` to the
-installed base's `reminder.py`, then check `python "$PROMO_REMINDER_PY" ensure --help` and initialize
-its local store with `python "$PROMO_REMINDER_PY" init`. The bridge requires `creation-preflight`
-and `ensure`; a legacy `add`-only helper is incompatible. Managed installations should use their
-current runtime's Python and reminder path. [Integration setup](skills/promotion-assistant/reference/integration.md).
+Planning requires a compatible `schedule-reminder` installation. Follow
+[integration setup](skills/promotion-assistant/reference/integration.md#schedule-reminder-the-only-scheduling-surface)
+to select `PROMO_REMINDER_PY`, verify `creation-preflight` and `ensure`, and initialize the store
+using the current runtime's Python. An older `add`-only helper is incompatible.
 
 ## Quick start
 
@@ -81,10 +78,9 @@ python scripts/cli.py report --funnel                 # six-layer funnel
 
 ## Config
 
-Product settings and runtime DATA belong in a separate PRIVATE companion with committed history.
-See [CONFIG.md](CONFIG.md) for schema, credential keys and recovery. Selection order is explicit
-`--config`, `PROMO_CONFIG_DIR`, `PROMOTION_ASSISTANT_CONFIG`, `PROMOTION_ASSISTANT_CONFIG_DIR`,
-`~/.promotion-assistant-config`, then `~/.config/promotion-assistant-config`. Invalid selections fail.
+Create a separate committed PRIVATE companion, then point `PROMO_CONFIG_DIR` at it.
+[CONFIG.md](CONFIG.md) owns the complete discovery order, schema, credential keys and switching
+rules; [DATA.md](DATA.md) owns retention and recovery.
 
 Run from the repository root:
 
@@ -93,18 +89,18 @@ python skills/promotion-assistant/scripts/init_config.py --out <private-companio
 python skills/promotion-assistant/scripts/verify_config.py --config-dir <private-companion>
 ```
 
-Fill product/registry `schema_version: 1`, product name and channel slug/platform; commit the
-companion and establish PRIVATE proof. The generated skeleton is not ready. Provider resources
-and credentials come from the selected `secrets/runtime.env` as `KEY=VALUE`. Dispatch binds that
-mapping per call without inheriting another product's ambient credentials or changing global env.
-`apply` now performs the local doctor check; it does not run the old companion helper or modify
-`~/.claude.json`.
+The skeleton needs product/registry `schema_version: 1`, product name and channel slug/platform,
+plus PRIVATE fetch/push proof and the selected provider resources. It is not ready immediately
+after initialization. The initializer still emits obsolete credential exclusions; apply the
+[documented companion-only correction](CONFIG.md#first-time-setup-e3) before versioning required
+`secrets/*.env` files. Provider mappings come from the selected `secrets/runtime.env` as `KEY=VALUE`.
 
-Clear stale higher-priority selectors before switching to B and rerun doctor. Live authorization
-remains the separate process-local `PROMO_LIVE_AUTHORIZED_<CHANNEL>` gate. READY establishes
-schema, PRIVATE and local-resource checks only; the email helper must implement reviewed-email-v1
-and live delivery requires separate verification. Restore credentials through the selected private
-backup policy or reauthorize. Real values never belong in the public source.
+Clear stale higher-priority selectors before switching and rerun doctor. `init` checks an existing
+configuration, with global `--config` placed before the subcommand; `apply` performs the local
+doctor check without executing historical companion helpers or changing `~/.claude.json`.
+READY covers schema, PRIVATE and local-resource checks. The separate process-local
+`PROMO_LIVE_AUTHORIZED_<CHANNEL>` gate and provider receipts determine authorized live delivery;
+email also requires a `reviewed-email-v1` helper.
 
 ## How to invoke
 
@@ -125,8 +121,8 @@ See [CONFIG.md](CONFIG.md) for PRIVATE storage and run/resume behavior.
   surfaces use `prep`; X and unknown platforms remain deferred. All automated delivery requires
   per-channel authorization and a matching remote receipt. `channels list --json` distinguishes
   implementation, local configuration and live proof; synthetic tests never count as live proof.
-- Platform ToS grey areas cannot be eliminated; the throttle/humanize layer lowers, not removes, ban
-  probability.
+- Platform terms and account restrictions still apply. The throttle/humanize layer is intended
+  to limit activity risk; this does not establish platform approval or a measured reduction in bans.
 
 ## Languages
 

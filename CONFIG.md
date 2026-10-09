@@ -84,10 +84,21 @@ export PROMO_CONFIG_DIR=~/.promotion-assistant-config
 python scripts/verify_config.py           # doctor: PASS/FAIL per check, names what is missing
 ```
 
-`init_config.py` is template-driven and deterministic, re-running it (same `--out`) produces a
-byte-identical skeleton, so two operators generate the same structure (E4). It intentionally does
-**not** generate or require a companion `apply.py`. The source reads `secrets/runtime.env`
-for each selected configuration; source `apply` performs doctor validation without global mutation.
+`init_config.py` is template-driven and deterministic. Re-running with the same `--out`
+preserves existing files unless `--force` is supplied; matching empty inputs produce the same
+skeleton (E4). It does not generate or require a companion `apply.py`.
+
+The initializer still writes obsolete Mode B exclusions (`secrets/*` and `*.env`) and credential
+backup prose. These conflict with [storage.contract.json](storage.contract.json), which declares
+direct-child `secrets/*.env` as versioned core PRIVATE artifacts. In the verified PRIVATE
+companion only, append `!secrets/*.env` after those generated ignore rules, then verify that the
+required credential files are eligible and commit them with the companion. Follow this CONFIG
+for recovery rather than the generated secret README. The public repository's exclusions stay
+in place. Initialization alone does not produce conforming runtime storage.
+
+The source reads `secrets/runtime.env` for each selected configuration; source `apply` performs
+doctor validation without global mutation. `cli.py init` checks an existing configuration, and
+the global `--config` option must precede the subcommand.
 
 ## Switching between configs (hot-swap), E5
 
@@ -189,12 +200,22 @@ pacing and cooldown still apply; an old-period reservation cannot bypass a new d
 existing state stops admission. A 429 persists account cooldown before the next item, while the
 affected item's publication outcome remains uncertain. Failure to persist cooldown stops the run.
 
+### Runtime quota changes
+
+The current `day_cap` is a hard admission ceiling, including retries. Lowering it preserves the current period and its consumed quota. Setting it to zero disables admission immediately. Raising it does not add tokens before the next normal refill.
+
+AIMD capacity remains separate from that ceiling. Refill uses the lower of the learned capacity and the current policy limit. Legacy buckets without consumption metadata cannot recover exact usage from clipped AIMD tokens; they keep their period and learned capacity, but wait for normal refill before admitting another request.
+
+### Observation accounting
+
 Bandit posterior updates and credited observation receipts commit together. Only stable event IDs
 linked to the saved run's decisions are considered; unchanged completed resumes do not train again.
 New delayed observations can update once. A legacy posterior without credit receipts baselines the
 currently visible observations without changing its posterior, avoiding historical double credit.
 Censored observations require a new linked event before reevaluation; time passing on a status-only
 resume does not invent a negative outcome. Discounting occurs when a new decision group is credited.
+
+### Manual preparation
 
 Manual prep validates the complete generated copy before recording a prepared decision.
 record-post --arm-id records an explicit human choice without a fabricated propensity; using
@@ -204,20 +225,5 @@ stochastic off-policy estimation. participate record requires the source --threa
 contributions count toward readiness. Drafts and unclassified legacy rows do not count, and repeated
 permalinks cannot add another contribution or silently change its classification.
 
-plan --days is a positive horizon for the campaign's existing slots, not a repetition count.
-Its stable identity includes product, campaign, arm, channel, account, action and occurrence date.
-The schedule helper must return the documented JSON receipts with task IDs; the bridge does not
-pass a --json flag. Setup must verify `creation-preflight` and `ensure` in the installed helper.
-The first plan records complete requests in the PRIVATE companion's `metrics/schedule-requests/`.
-Retries keep the saved due time and fields even as the clock advances, including completed tasks.
-Changed content or malformed saved requests stop for review; intentional date changes use the
-base's update or snooze operation on the existing task.
-
-
-## Runtime quota changes
-
-The current `day_cap` is a hard admission ceiling, including retries. Lowering it preserves the current period and its consumed quota. Setting it to zero disables admission immediately. Raising it does not add tokens before the next normal refill.
-
-AIMD capacity remains separate from that ceiling. Refill uses the lower of the learned capacity and the current policy limit. Legacy buckets without consumption metadata cannot recover exact usage from clipped AIMD tokens; they keep their period and learned capacity, but wait for normal refill before admitting another request.
-
-Schedule requests persist as `metrics/schedule-requests/<64-hex-digest>.json` with title, due_at, idempotency_key, ext and description. Restore exact receipts with scheduler registrations before retrying. Their adjacent `.<digest>.json-<suffix>` staging and lock files are source-declared; interrupted files stay until transaction and registration outcomes are known.
+For planning setup, request identity, the `--days` horizon and recovery, follow
+[the schedule-reminder integration](skills/promotion-assistant/reference/integration.md#schedule-reminder-the-only-scheduling-surface).

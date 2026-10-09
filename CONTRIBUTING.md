@@ -1,8 +1,8 @@
 # Contributing to promotion-assistant
 
-A **public, product-agnostic** promotion engine, all copy and credentials live in a separate
-**private per-product config** repo, never here. Compliance is engineering, not goodwill: the
-fail-closed gates are non-negotiable. Read [`PHILOSOPHY.md`](PHILOSOPHY.md) before changing anything.
+This public engine contains reusable promotion logic. Product copy, credentials and runtime
+records belong in a separate PRIVATE companion. Changes must preserve the dispatch checks and
+evidence requirements described in [PHILOSOPHY.md](PHILOSOPHY.md).
 
 ## Golden rules
 
@@ -14,10 +14,11 @@ fail-closed gates are non-negotiable. Read [`PHILOSOPHY.md`](PHILOSOPHY.md) befo
    `tests/test_compliance_hardening.py`. Widen the confusable map / rules, never loosen them.
 3. **Evaluation-driven.** Extend the `selftest.py` E1-E12 signals and `tests/` before the
    implementation. The suite must stay green, it is the self-evolve merge gate.
-4. **Secrets never enter this repo.** No product copy, no creds. `secrets/*` is Mode B (gitignored)
-   in the config repo; this skill must never read, log, or echo a token.
+4. **Keep real data private.** Product copy and credentials never enter this public repository.
+   Source-declared `secrets/*.env` files remain versioned in the PRIVATE companion under
+   [CONFIG.md](CONFIG.md). Adapters may read their selected credentials but must not log or echo them.
 5. **Don't reimplement the base.** Scheduling → the `schedule-reminder` CLI only (never its .db);
-   alerts → the Agent Center relay (`relay.py --stream promotion`, Big-Brother fallback).
+   alerts → the configured relay through [integration.md](skills/promotion-assistant/reference/integration.md).
 
 ## Run the suite
 

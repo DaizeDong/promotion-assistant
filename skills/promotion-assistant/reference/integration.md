@@ -16,11 +16,17 @@ NEVER read its `.db` or build SQL. Each promo item:
 - `--due-at <ISO>` drives the human-paced cadence; `transition` records funnel progress.
 Cross-channel dependencies use `block/--blocker-id`. Do not assume the installed helper supports a flag or receipt format without checking it.
 
-The first `plan` saves each complete request under the PRIVATE companion's
-`metrics/schedule-requests/` before invoking the helper. Same-date retries preserve that request's
-original due time and identity. Changed content or damaged saved requests stop with
-`ERR_SCHEDULE_CHANGED`; inspect the saved request and existing reminder before changing the plan.
-For an intentional date change, update or snooze the existing reminder instead of creating a copy.
+`plan --days` is a positive horizon for the campaign's existing slots, not a repetition count.
+The first plan saves title, due_at, idempotency_key, ext and description in
+`metrics/schedule-requests/<64-hex-digest>.json` in the PRIVATE companion before invoking the helper.
+Same-date retries reuse the saved due time, identity and fields even after tasks complete.
+Changed content or malformed requests stop with `ERR_SCHEDULE_CHANGED`; inspect the saved request
+and existing reminder before changing the plan. Intentional date changes use update or snooze
+on the existing task. Restore exact receipts with scheduler registrations before retrying.
+
+Adjacent `.<digest>.json-<suffix>` staging and lock files are source-declared. Preserve interrupted
+files until transaction and registration outcomes are known. Scheduling completes only after
+successful JSON receipts with task IDs; failed or unavailable registration makes `plan` fail.
 
 ## Alerts (Discord relay, one-way Claude→phone)
 Periodic `due` reminders ride schedule-reminder's own tick/relay. `scripts/alert.py` is ONLY for

@@ -9,6 +9,7 @@ All notable changes to this project are documented here (Keep a Changelog style)
   recovery state stay protected when the threshold is exceeded.
 
 ### Fixed
+- Align the engine package version with the existing 0.1.3 plugin and documentation declarations.
 - Bind provider resources to selected-root runtime.env, replace the unsupported companion apply bridge with local doctor validation, and reject incomplete schemas before READY.
 - Authorize source-owned runtime writes and declare scheduling receipts, locks and staging with dependency-based recovery rules.
 - Declare retained legacy consent and policy inputs without treating them as
@@ -23,10 +24,8 @@ All notable changes to this project are documented here (Keep a Changelog style)
 - Email requires the complete `reviewed-email-v1` helper request and receipt contract; a legacy helper or message ID alone is insufficient.
 - Verify a separate PRIVATE companion with committed history through the pinned Guards API and its current visibility receipt.
 - Credit linked observations using durable identities and receipts, preserving prior learning when migrating legacy state.
-- Clarify the tradeoffs behind private configuration, reviewed dispatch and evidence-based feedback.
-
-### Fixed
-- Align the engine package version with the existing 0.1.3 plugin and documentation declarations.
+- Consolidate setup, scheduling recovery and current capability documentation; explain the private-configuration, reviewed-dispatch and feedback tradeoffs.
+- Align current credential guidance with the source storage contract and document the companion-only adjustment still required by the initializer.
 
 ## [0.1.3] - 2026-07-18
 ### Added

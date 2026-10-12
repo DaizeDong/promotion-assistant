@@ -1,7 +1,6 @@
 # Design Brief, promotion-assistant
 
-The initial skill-smith Step 0 research informed this design.
-Architecture record: `CodesResearch/_skill-builds/07-promotion-assistant/ARCHITECTURE.md` (8-route recon).
+The initial skill-smith Step 0 research (8-route recon) informed this design.
 
 ## Research references
 - Buffer/Typefully/Postiz (scheduling + queue-over-cron), Smartlead/Instantly/Lemlist (email pool +

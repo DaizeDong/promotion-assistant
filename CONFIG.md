@@ -9,13 +9,13 @@ the in-engine field reference is [`skills/promotion-assistant/reference/config-s
 
 An explicit `--config` path is authoritative. Otherwise `scripts/config.py` uses the highest
 nonempty environment selection below. A missing or malformed selection fails without falling
-through to another product. Home locations apply only when no environment selection exists:
+through to another product. Companion discovery applies only when no environment selection exists:
 
 1. `$PROMO_CONFIG_DIR`, **primary**, recommended (the canonical name this skill uses).
 2. `$PROMOTION_ASSISTANT_CONFIG`, config-spec canonical alias (accepted).
 3. `$PROMOTION_ASSISTANT_CONFIG_DIR`, config-spec canonical alias (accepted).
-4. `~/.promotion-assistant-config/`, dotfile-in-home fallback.
-5. `~/.config/promotion-assistant-config/`, XDG-style fallback (Linux/macOS).
+4. [Guards companion discovery](guards/COMPANION.md) through the pinned resolver, which tries the
+   proven sibling `promotion-assistant-config/` beside this repository first. There is no XDG location.
 
 If none resolves, the engine fails closed with a clear message (it never invents a default product).
 The selected directory must belong to a separate versioned PRIVATE Git companion. Git resolves
@@ -73,10 +73,10 @@ loader falls back to a `.json` sibling (zero hard third-party deps).
 cd skills/promotion-assistant
 
 # 1. Stamp a conformant, empty config skeleton (deterministic — E4):
-python scripts/init_config.py             # -> ~/.promotion-assistant-config/  (or pass --out <dir>)
+python scripts/init_config.py --out <companion dir>   # your PRIVATE companion clone
 
-# 2. Point the skill at it (skip if you used the default path):
-export PROMO_CONFIG_DIR=~/.promotion-assistant-config
+# 2. Point the skill at it (skip when the companion sits beside this repository):
+export PROMO_CONFIG_DIR=<companion dir>
 
 # 3. Use a separate Git companion with a committed HEAD and PRIVATE fetch/push destinations on every remote.
 # 4. Fill product.json + registry.json + channels/<slug>/policy.json and secrets/runtime.env;

@@ -12,13 +12,14 @@ Discovery convention the skill uses (also in CONFIG.md, E2); first hit wins:
   1. $PROMO_CONFIG_DIR                        (primary, recommended)
   2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
   3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
-  4. ~/.promotion-assistant-config/          (dotfile fallback)
-  5. ~/.config/promotion-assistant-config/   (XDG fallback)
+  4. the proven sibling promotion-assistant-config beside this repository, then the rest of
+     the pinned guards companion discovery (guards/COMPANION.md). There is no XDG location.
 
 Usage:
   python init_config.py [--out <dir>] [--force]
 
---out   target config-repo dir; default is the dotfile path ~/.promotion-assistant-config/.
+--out   target config-repo dir (required unless PROMO_CONFIG_DIR or an alias selects one; the
+        initializer has no default location).
 Stdlib only. Cross-platform.
 """
 import argparse
@@ -27,7 +28,9 @@ import os
 import sys
 
 PRIMARY_ENV = "PROMO_CONFIG_DIR"
-DEFAULT_DIR = os.path.expanduser("~/.promotion-assistant-config")
+ALIASES = ("PROMOTION_ASSISTANT_CONFIG", "PROMOTION_ASSISTANT_CONFIG_DIR")
+NO_COMPANION = ("no destination: pass --out <dir> to your PRIVATE companion clone "
+                "(promotion-assistant-config beside this repository), or set PROMO_CONFIG_DIR")
 
 # Mode B secrets gate for the COMPANION config repo (config-spec E6). Real values never enter git.
 GITIGNORE = """\
@@ -105,14 +108,17 @@ def jdump(obj):
 
 def main():
     ap = argparse.ArgumentParser(description="Stamp a spec-conformant promotion-assistant config repo (Mode B).")
-    ap.add_argument("--out", default=None, help="target config-repo dir (default ~/.promotion-assistant-config)")
+    ap.add_argument("--out", default=None, help="target config-repo dir (default: $PROMO_CONFIG_DIR or an alias)")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 
-    out = os.path.abspath(os.path.expanduser(a.out or DEFAULT_DIR))
+    selected = a.out or next((os.environ[v] for v in (PRIMARY_ENV,) + ALIASES if os.environ.get(v)), None)
+    if not selected:
+        ap.error(NO_COMPANION)
+    out = os.path.abspath(os.path.expanduser(selected))
     print("Init promotion-assistant config repo (Mode B) at %s" % out)
-    print("Discovery env var: %s  (aliases PROMOTION_ASSISTANT_CONFIG[_DIR]; fallback %s)"
-          % (PRIMARY_ENV, DEFAULT_DIR))
+    print("Discovery env var: %s  (aliases PROMOTION_ASSISTANT_CONFIG[_DIR]; then the proven sibling companion)"
+          % PRIMARY_ENV)
 
     write(os.path.join(out, "product.json"), jdump(PRODUCT_JSON), a.force)
     write(os.path.join(out, "registry.json"), jdump(REGISTRY_JSON), a.force)

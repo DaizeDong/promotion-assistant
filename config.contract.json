@@ -22,8 +22,7 @@
       "PROMO_CONFIG_DIR",
       "PROMOTION_ASSISTANT_CONFIG",
       "PROMOTION_ASSISTANT_CONFIG_DIR",
-      "~/.promotion-assistant-config",
-      "~/.config/promotion-assistant-config"
+      "proven sibling companion"
     ],
     "required_fields": [
       "product.schema_version",

@@ -1,7 +1,7 @@
 # L0, Per-product private config repo
 
 The skill is product-agnostic. All copy, audiences, channel policy and secrets live in a **separate
-private config repo**, located via `PROMO_CONFIG_DIR` (or `~/.promotion-assistant-config`). Generate the structure with the source initializer. Provider binding is selected-root
+private config repo**, located via `PROMO_CONFIG_DIR` (or the proven sibling `promotion-assistant-config`). Generate the structure with the source initializer. Provider binding is selected-root
 `secrets/runtime.env`; [CONFIG.md](../../../CONFIG.md) lists supported keys and recovery rules.
 
 ```

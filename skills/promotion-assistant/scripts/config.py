@@ -9,16 +9,20 @@ Discovery order (first hit wins):
   1. $PROMO_CONFIG_DIR                        (explicit, recommended — primary)
   2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
   3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
-  4. ~/.promotion-assistant-config/          (dotfile-in-home fallback)
-  5. ~/.config/promotion-assistant-config/   (XDG-style fallback)
+  4. the proven sibling promotion-assistant-config beside this repository, then the rest of
+     the pinned guards companion discovery (guards/COMPANION.md). There is no XDG location.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
 from pathlib import Path
 from .private_storage import prove
+
+ROOT = Path(__file__).resolve().parents[3]
+SKILL = "promotion-assistant"
 
 try:  # optional; copy/audiences may be YAML if PyYAML present, else JSON sidecars
     import yaml  # type: ignore
@@ -42,16 +46,29 @@ def find_config_dir(explicit: str | None = None) -> Path:
         if not isinstance(selected, (str, os.PathLike)) or not str(selected).strip() or not Path(selected).expanduser().is_dir():
             raise ConfigError('selected config directory is missing or invalid')
         return Path(selected).expanduser().resolve()
-    cands = []
-    cands.append(Path.home() / ".promotion-assistant-config")
-    cands.append(Path.home() / ".config" / "promotion-assistant-config")
-    for c in cands:
-        if c and c.is_dir():
-            return c.resolve()
+    found = _sibling_companion()
+    if found is not None:
+        return found
     raise ConfigError(
-        "no product config found. Set PROMO_CONFIG_DIR to your config repo "
-        "(see runbooks/new-machine.md), e.g. export PROMO_CONFIG_DIR=~/CodesClaude/promotion-assistant-config"
+        "no product config found. Create a PRIVATE companion repository with an origin and clone it "
+        "beside this repository as promotion-assistant-config, or set PROMO_CONFIG_DIR to it "
+        "(see runbooks/new-machine.md)."
     )
+
+
+def _sibling_companion() -> Path | None:
+    """The companion the pinned guards resolver discovers (proven sibling first), or None."""
+    resolver = ROOT / "guards" / "tools" / "datadir.py"
+    if not resolver.is_file():
+        raise ConfigError("pinned guards resolver missing; run git submodule update --init guards")
+    spec = importlib.util.spec_from_file_location("_promotion_assistant_datadir", resolver)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        found = module.resolve_companion_root(SKILL, source_root=str(ROOT))
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ConfigError("cannot resolve the companion: %s" % exc) from exc
+    return Path(found).resolve() if found else None
 
 
 def _load_doc(path: Path):

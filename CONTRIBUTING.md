@@ -15,8 +15,9 @@ evidence requirements described in [PHILOSOPHY.md](PHILOSOPHY.md).
 3. **Evaluation-driven.** Extend the `selftest.py` E1-E12 signals and `tests/` before the
    implementation. The suite must stay green, it is the self-evolve merge gate.
 4. **Keep real data private.** Product copy and credentials never enter this public repository.
-   Source-declared `secrets/*.env` files remain versioned in the PRIVATE companion under
-   [CONFIG.md](CONFIG.md). Adapters may read their selected credentials but must not log or echo them.
+   `secrets/*.env` files are gitignored projections of an external credential store and are never
+   versioned ([CONFIG.md](CONFIG.md#private-credentials-e6)). Adapters may read their selected
+   credentials but must not log or echo them.
 5. **Don't reimplement the base.** Scheduling → the `schedule-reminder` CLI only (never its .db);
    alerts → the configured relay through [integration.md](skills/promotion-assistant/reference/integration.md).
 

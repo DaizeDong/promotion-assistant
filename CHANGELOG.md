@@ -4,6 +4,12 @@ All notable changes to this project are documented here (Keep a Changelog style)
 
 ## [Unreleased]
 
+### Credentials
+- `secrets/*.env` credential files are now documented and declared (`storage.contract.json`,
+  persistence `transient`) as gitignored projections generated from an external credential store,
+  never versioned in any repository. The companion-only `!secrets/*.env` re-include step is removed;
+  keep the initializer's exclusions. Docs state that dispatch adapters read only `secrets/runtime.env`.
+
 ### Storage review threshold
 - Set a 64 MiB companion working-data review threshold. Required observations and
   recovery state stay protected when the threshold is exceeded.

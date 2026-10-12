@@ -88,13 +88,14 @@ python scripts/verify_config.py           # doctor: PASS/FAIL per check, names w
 preserves existing files unless `--force` is supplied; matching empty inputs produce the same
 skeleton (E4). It does not generate or require a companion `apply.py`.
 
-The initializer still writes obsolete Mode B exclusions (`secrets/*` and `*.env`) and credential
-backup prose. These conflict with [storage.contract.json](storage.contract.json), which declares
-direct-child `secrets/*.env` as versioned core PRIVATE artifacts. In the verified PRIVATE
-companion only, append `!secrets/*.env` after those generated ignore rules, then verify that the
-required credential files are eligible and commit them with the companion. Follow this CONFIG
-for recovery rather than the generated secret README. The public repository's exclusions stay
-in place. Initialization alone does not produce conforming runtime storage.
+The initializer writes Mode B exclusions (`secrets/*` and `*.env`); keep them. Credential files
+under `secrets/` are generated projections of an external credential store and are never
+versioned, in this public repository or in the PRIVATE companion
+([storage.contract.json](storage.contract.json) declares them transient). Do not re-include
+`secrets/*.env` in any ignore file. Register each credential file as an output of your credential
+store before creating it, then generate it from the store; never write values into the file by
+hand, because an ignored file that exists only on one disk has no backup. Initialization alone does
+not produce conforming runtime storage.
 
 The source reads `secrets/runtime.env` for each selected configuration; source `apply` performs
 doctor validation without global mutation. `cli.py init` checks an existing configuration, and
@@ -168,10 +169,14 @@ with task IDs; unavailable or failed registration makes `plan` exit nonzero.
 
 ## Private credentials (E6)
 
-The companion config repo is **separate and private**. Direct-child `secrets/*.env` files are
-core, versioned artifacts under the source storage contract; keep them in that PRIVATE
-companion and restore them with its reviewed credential history. Runtime adapters read
-`secrets/runtime.env`; no MCP template or companion apply script is required. Its allowed keys are
+The companion config repo is **separate and private**, but credential values do not live in its
+history. Direct-child `secrets/*.env` files are gitignored projections generated from an external
+credential store; the store is their only source of truth and their recovery route. Change a value
+in the store and regenerate the projection; restore by restoring the store and regenerating, or by
+reauthorizing with the provider. Dispatch adapters read only `secrets/runtime.env` (the optional
+participation reader also reads `secrets/reddit.env`; no other `secrets/*.env` file is read), so
+`runtime.env` must itself be a registered output of the credential store before it is created. No
+MCP template or companion apply script is required. Its allowed keys are
 `PROMO_SEND_GMAIL`, `PROMO_DISCORD_BOT_TOKEN`, `PROMO_DISCORD_ANNOUNCE_CHANNEL_ID`,
 `PROMO_DISCORD_ALLOW_EMBED`, `PROMO_MASTODON_INSTANCE`, `PROMO_MASTODON_TOKEN`,
 `PROMO_BLUESKY_HANDLE` and `PROMO_BLUESKY_APP_PASSWORD`. Use UTF-8 `KEY=VALUE` lines;

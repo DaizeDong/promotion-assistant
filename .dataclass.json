@@ -3,7 +3,7 @@
     "TOOL is public code, documentation and measurements of the tool itself.",
     "FIXTURE is synthetic test input reproduced by tools/make_fixtures.py.",
     "DATA is real runtime output, versioned in a separate PRIVATE companion.",
-    "Current credentials are core artifacts versioned only in the PRIVATE companion.",
+    "Credentials are gitignored projections of an external credential store and are never versioned.",
     "Real DATA is physically absent from this public source tree, including ignored paths."
   ],
   "_audited": "Runtime Config proves the selected Git companion PRIVATE before reading product data or resolving writes. Metrics, compliance and per-run destinations are canonicalized and confined to that selection. Explicit/environment selections cannot fall through to another product. Public-tree DATA patterns remain declared even though runtime writes occur in the companion. Promotion4 separately verifies every effective remote fetch/push destination and rejects existing hardlinked runtime files. Listed synthetic tests and sample_events are reproduced by tools/make_fixtures.py.",

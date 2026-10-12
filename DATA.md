@@ -22,8 +22,8 @@ reservations and cooldowns. Do not reset these to reduce disk use. Dry-run logs 
 rebuildable after their specific review or diagnosis ends; retain any exact payload
 that is selected evidence or still referenced.
 
-Current credential files belong only in approved private storage and need an explicit
-backup or reauthorization route. Initializer templates and copied runbooks are
+Current credential files are gitignored projections of an external credential store, never
+versioned; their recovery route is that store or reauthorization. Initializer templates and copied runbooks are
 rebuildable setup references. The source owns the current operating instructions;
 a companion needs a current README linking here. Current source loads `secrets/runtime.env`
 from the selected root; source apply validates it without running companion code. The legacy

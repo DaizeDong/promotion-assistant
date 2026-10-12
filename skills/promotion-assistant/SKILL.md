@@ -91,10 +91,10 @@ The source thread and final `give` or `ask` type are required for every particip
 3. **Throttle + humanize.** token-bucket + AIMD (429 → halve + cooldown), warmup state machine (no
    level-skipping), lognormal jitter, per-account variants + content-hash dedup. Random delay alone
    is NOT safety.
-4. **Private storage.** Real copy, audiences, consent, runtime DATA and source-declared
-   `secrets/*.env` credentials are versioned in the verified PRIVATE companion. Follow
-   [CONFIG.md](../../CONFIG.md#first-time-setup-e3) to correct the initializer's obsolete exclusions.
-   No real values belong in this public skill tree.
+4. **Private storage.** Real copy, audiences, consent and runtime DATA are versioned in the
+   verified PRIVATE companion. `secrets/*.env` credentials are gitignored projections generated
+   from an external credential store and are never versioned anywhere; see
+   [CONFIG.md](../../CONFIG.md#private-credentials-e6). No real values belong in this public skill tree.
 5. **Don't reimplement the base.** Scheduling → `schedule-reminder` CLI only (never its .db/SQL);
    alerts → the configured Discord relay; email → the configured `reviewed-email-v1` helper.
 6. **Failure = explicit gap.** A channel with no compliant automated transport is registered as a

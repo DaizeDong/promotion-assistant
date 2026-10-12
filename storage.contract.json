@@ -201,15 +201,17 @@
     {
       "artifact_id": "credentials",
       "path_pattern": "secrets/*.env",
-      "purpose": "Currently provisioned channel credentials.",
+      "purpose": "Currently provisioned channel credentials, as plaintext projections of an external credential store.",
       "schema": "CONFIG.md; selected provider or email-helper contract.",
-      "producer": "Authorized credential provisioning.",
-      "consumer_or_final_deliverable": "The selected channel adapter or external credential bridge.",
-      "rebuild_or_restore": "Restore via the approved private credential backup or reauthorize.",
+      "producer": "Generation from an external credential store into a gitignored file; never hand-written.",
+      "consumer_or_final_deliverable": "The selected channel adapter reads secrets/runtime.env only.",
+      "rebuild_or_restore": "Restore the external credential store and regenerate the projection, or reauthorize with the provider.",
       "retention_rule": {
-        "class": "core",
-        "rule": "Keep current credentials required by active channels or recovery; remove replaced credentials only after rotation is confirmed."
-      }
+        "class": "rebuildable",
+        "rule": "Regenerate from the credential store whenever a value changes; remove a projection once no active channel needs it."
+      },
+      "persistence": "transient",
+      "transient_reason": "Credential values are versioned only in the external credential store; the companion holds a gitignored generated copy and never commits it."
     },
     {
       "artifact_id": "generated_reference_0",

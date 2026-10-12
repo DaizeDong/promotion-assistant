@@ -58,11 +58,13 @@ SECRETS_README = """\
 # secrets/ — Mode B (gitignored)
 
 Provider resources live in `secrets/runtime.env` and are **gitignored** (see ../.gitignore).
-This initializer excludes credentials by default; an approved PRIVATE backup is required — the market-intel "Mode A" rationale does not apply here.
+Every `*.env` here is a projection generated from an external credential store and is never
+versioned. Register a file as an output of that store before creating it, change values in the
+store and regenerate; never edit a projection by hand.
 
-Only `*.env.template` files and this README are committed. Back real values up out-of-band
-(cloud sync / encrypted drive); restore on a new machine by copying the `*.env` files back, then
-running `python scripts/verify_config.py` from the skill repo. Files MUST be UTF-8 without BOM.
+Only `*.env.template` files and this README are committed. On a new machine restore the credential
+store, regenerate the projections, then run `python scripts/verify_config.py` from the skill repo.
+Files MUST be UTF-8 without BOM.
 """
 
 PRODUCT_JSON = {
@@ -86,7 +88,7 @@ it does not execute this companion directory or modify host-wide settings.
 """
 
 RUNBOOKS = {
-    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and its approved credential backup. Select the root with PROMO_CONFIG_DIR, then run the source scripts/verify_config.py. Fill secrets/runtime.env using CONFIG.md. READY is local configuration/resource proof only.\n',
+    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential store, then regenerate secrets/*.env from the store. Select the root with PROMO_CONFIG_DIR, then run the source scripts/verify_config.py. secrets/runtime.env must be a registered output of the credential store (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
     'live-authorize.md': '# Live authorization\n\nConfigure secrets/runtime.env and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
     'ban-recovery.md': '# Recovery\n\nPause dispatch and reconcile state, scheduling receipts and unresolved provider outcomes before retrying. Preserve all protected lock and receipt files until their dependencies close.\n',
 }

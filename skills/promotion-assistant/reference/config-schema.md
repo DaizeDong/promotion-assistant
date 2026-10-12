@@ -14,7 +14,7 @@ private config repo**, located via `PROMO_CONFIG_DIR` (or the proven sibling `pr
   compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
   metrics/                # versioned PRIVATE events, previews, suppression and runtime state
   metrics/runs/<id>.json   # versioned PRIVATE frozen intent and per-item receipts
-  secrets/                # PRIVATE versioned <slug>.env credentials and recovery docs
+  secrets/                # gitignored *.env projections of an external credential store; README only is versioned
   secrets/runtime.env    # provider resource mapping, never loaded as shell code
   runbooks/               # new-machine.md, live-authorize.md, ban-recovery.md
 ```

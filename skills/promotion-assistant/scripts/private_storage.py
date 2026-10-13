@@ -1,32 +1,17 @@
-"""Prove PRIVATE destinations and serialize durable state changes."""
+"""Check DATA destination paths and serialize durable state changes.
+
+These are filesystem checks only and start no process: the destination must sit in a Git
+worktree that is separate from this public source tree, with no Git metadata, ambiguous
+components or hardlinked files. Repository visibility is not checked at runtime.
+"""
 from contextlib import contextmanager
-from functools import lru_cache
-import importlib.util
 import os
 from pathlib import Path
-import re
 import stat
 import uuid
-import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[3]
-
-
-@lru_cache(maxsize=1)
-def _guard_api():
-    """Load the pinned kit; only the module is cached, never a PRIVATE proof."""
-    path = ROOT/'guards/tools/data_boundary.py'
-    try:
-        spec = importlib.util.spec_from_file_location('_promotion_guard_boundary', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        if not all(callable(getattr(module, name, None)) for name in (
-                'prove_private_companion', 'read_private_companion_git', 'GitError')):
-            raise ValueError('pinned Guards kit lacks the supported companion API')
-    except (OSError, ImportError, AttributeError) as exc:
-        raise ValueError('pinned Guards companion API is unavailable; initialize its submodule') from exc
-    return module
 
 
 def repository(existing):
@@ -48,12 +33,12 @@ def _file_guard(path):
         raise ValueError('runtime destination is not a regular file or directory')
 
 
-def publication_destinations(repo):
-    """Return freshly verified PRIVATE repository identities from the shared policy."""
-    return _prove(repo)[1].repositories
+def companion_root(repo):
+    """Return the separate Git worktree that holds ``repo``'s runtime DATA."""
+    return _check(repo)[1]
 
 
-def _prove(requested):
+def _check(requested):
     path = Path(requested).expanduser()
     parts = path.parts[1:] if path.is_absolute() else path.parts
     if any(part.lower() == '.git' or ':' in part or part.endswith((' ', '.')) for part in parts):
@@ -69,22 +54,12 @@ def _prove(requested):
     repo = repository(existing.parent if existing.is_file() else existing)
     if ROOT.is_relative_to(repo) or repo.is_relative_to(ROOT) or not path.is_relative_to(repo):
         raise ValueError('runtime data requires a separate companion')
-    api = _guard_api()
-    try:
-        proof = api.prove_private_companion(repo)
-        if Path(proof.root) != repo:
-            raise ValueError('invalid or nested Git worktree boundary')
-        commit = api.read_private_companion_git(proof, 'rev-parse', '--verify', 'HEAD').stdout.strip()
-    except api.GitError as exc:
-        raise ValueError('PRIVATE companion verification failed; check its receipt and Git configuration') from exc
-    if not re.fullmatch(r'[0-9a-fA-F]{40}|[0-9a-fA-F]{64}', commit):
-        raise ValueError('companion must have a committed versioned history')
-    return path, proof
+    return path, repo
 
 
-def prove(requested):
-    """Fresh publication authority is established for each operation, never cached."""
-    return _prove(requested)[0]
+def check(requested):
+    """Return the resolved destination once the local path checks pass."""
+    return _check(requested)[0]
 
 
 def _read_current(path, missing=None):
@@ -99,28 +74,13 @@ def _read_current(path, missing=None):
         return missing
 
 
-@lru_cache(maxsize=1)
-def _storage_api():
-    path = ROOT / 'guards/tools/storage_contract.py'
-    spec = importlib.util.spec_from_file_location('_promotion_storage_contract', path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def authorize(path, *, directory=False):
-    checked, proof = _prove(path)
-    root = Path(proof.root)
-    result = _storage_api().authorize_artifact_write(
-        ROOT, root, checked.relative_to(root).as_posix(), directory=directory)
-    if Path(result.path) != checked:
-        raise ValueError('runtime artifact authority changed destination')
-    return checked
+def authorize(path):
+    """Path-only admission for a DATA write."""
+    return check(path)
 
 
 def read_text(path, *, missing=''):
-    return _read_current(prove(path), missing)
+    return _read_current(check(path), missing)
 
 
 @contextmanager
@@ -144,7 +104,7 @@ def exclusive(path, *, timeout=10):
     finally:
         if descriptor is not None:
             os.close(descriptor)
-            if prove(lock) != lock:
+            if check(lock) != lock:
                 raise ValueError('runtime lock destination changed')
             lock.unlink()
 
@@ -154,21 +114,16 @@ def _replace(path, payload):
         raise ValueError('runtime state transform must return text')
     temporary = None
     try:
-        checked, before = _prove(path)
-        if checked != path:
+        if check(path) != path:
             raise ValueError('runtime state destination changed')
-        authorize(path)
         temporary = authorize(path.with_name('.'+path.name+'-'+uuid.uuid4().hex))
         descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'w', encoding='utf-8', newline='\n') as stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        checked, after = _prove(path)
-        if (checked != path or (after.root, after.repositories, after.signature) !=
-                (before.root, before.repositories, before.signature)):
+        if check(path) != path:
             raise ValueError('runtime state destination changed')
-        authorize(path)
         os.replace(temporary, path)
         temporary = None
     finally:

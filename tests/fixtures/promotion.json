@@ -281,14 +281,6 @@
       "ok": true
     }
   ],
-  "visibility_responses": [
-    "{\"visibility\":\"PRIVATE\",\"nameWithOwner\":\"example/synthetic-promotion-config\"}",
-    "{\"visibility\":\"PUBLIC\"}",
-    "{\"visibility\":\"UNKNOWN\"}",
-    "{}",
-    "[]",
-    "not JSON"
-  ],
   "invalid_recipients": [
     "",
     "not-an-address",

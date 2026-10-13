@@ -47,15 +47,12 @@ def test_runtime_mapping_rejects_authorization_token(case):
         config.Config(case['root']).runtime_env()
 
 
-def test_schedule_receipt_and_staging_are_owned(case):
+def test_schedule_receipt_publishes_without_staging_residue(case):
     root = case['root']
     target = root / 'metrics/schedule-requests' / ('a'*64+'.json')
     private_storage.update_text(target, lambda before: ('{}', None))
     assert target.read_text() == '{}'
     assert [p.name for p in target.parent.iterdir()] == [target.name]
-    with pytest.raises(ValueError, match='owner'):
-        private_storage.update_text(root / 'metrics/unknown/new.json', lambda before: ('{}', None))
-    assert not (root / 'metrics/unknown').exists()
 
 
 def test_same_process_config_switch_uses_selected_root_resources(case, monkeypatch):

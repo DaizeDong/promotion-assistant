@@ -28,22 +28,7 @@ def case(tmp_path, monkeypatch):
         ''.join(json.dumps(row)+'\n' for row in sample['consent']), encoding='utf-8')
 
     def process(argv, **kwargs):
-        if argv[0] == 'git':
-            if '--show-toplevel' in argv:
-                answer = str(root)
-            elif argv[-1:] == ['remote']:
-                answer = 'origin'
-            elif argv[-3:] == ['rev-parse', '--verify', 'HEAD']:
-                answer = '1'*40
-            elif 'get-url' in argv and '--all' in argv:
-                answer = sample['origin']
-            else:
-                raise AssertionError('unexpected Git metadata query')
-        elif argv[0] == 'gh':
-            answer = json.dumps({'visibility': 'PRIVATE', 'nameWithOwner': 'example/synthetic-promotion-config'})
-        else:
-            raise AssertionError('unexpected external process')
-        return subprocess.CompletedProcess(argv, 0, answer, '')
+        raise AssertionError('runtime storage starts no external process')
 
     monkeypatch.setattr(subprocess, 'run', process)
     sample.update(root=root, cfg=config.Config(root))
@@ -430,11 +415,10 @@ def test_cli_run_dry_and_blocked_exit_contract(case, capsys):
 
 
 @pytest.mark.parametrize('linked', [False, True])
-@pytest.mark.parametrize('visibility', SAMPLE['visibility_responses'])
-def test_private_api_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic_private_metadata, linked, visibility):
+def test_companion_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic_private_metadata, linked):
     from scripts import private_storage
-    from types import SimpleNamespace
     monkeypatch.setattr(private_storage, 'repository', synthetic_private_metadata)
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: pytest.fail('path checks start no process'))
     root = tmp_path/'synthetic-companion'
     root.mkdir()
     if linked:
@@ -443,35 +427,16 @@ def test_private_api_boundary_normal_and_linked(tmp_path, monkeypatch, synthetic
         (root/'.git').mkdir()
     (root/'product.json').write_text(json.dumps(SAMPLE['product']))
     (root/'registry.json').write_text(json.dumps(SAMPLE['registry']))
-    api = private_storage._guard_api()
-    calls = []
-    def proof(repo, visibility_map=None):
-        calls.append(('proof', repo))
-        if visibility != SAMPLE['visibility_responses'][0]:
-            raise api.GitError('synthetic rejected visibility receipt')
-        return SimpleNamespace(root=str(root), repositories=('example/synthetic-promotion-config',),
-                               signature='synthetic-publication')
-    def read(proof, *arguments):
-        calls.append(('read', arguments))
-        return SimpleNamespace(stdout='1'*40, returncode=1 if arguments[0] == 'check-ignore' else 0)
-    monkeypatch.setattr(api, 'prove_private_companion', proof)
-    monkeypatch.setattr(api, 'read_private_companion_git', read)
-    if visibility == SAMPLE['visibility_responses'][0]:
-        assert config.Config(root).metrics_dir() == root/'metrics'
-    else:
-        with pytest.raises(config.ConfigError):
-            config.Config(root)
-        assert not (root/'metrics').exists()
-    assert calls[0] == ('proof', root)
+    assert config.Config(root).metrics_dir() == root/'metrics'
 
 
-def test_unversioned_and_source_storage_fail_before_metadata(tmp_path, monkeypatch, synthetic_private_metadata):
+def test_unversioned_and_source_storage_are_refused(tmp_path, monkeypatch, synthetic_private_metadata):
     from scripts import private_storage
     monkeypatch.setattr(private_storage, 'repository', synthetic_private_metadata)
-    monkeypatch.setattr(private_storage, '_guard_api', lambda: pytest.fail('unversioned/source roots need no metadata lookup'))
     for root in (tmp_path, private_storage.ROOT):
         with pytest.raises(config.ConfigError):
             config.Config(root)
+    assert not (tmp_path/'metrics').exists()
 
 
 @pytest.mark.parametrize('relative', ['metrics', 'metrics/runs', 'metrics/events.jsonl',

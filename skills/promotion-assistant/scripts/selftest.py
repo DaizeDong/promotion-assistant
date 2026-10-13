@@ -189,7 +189,6 @@ def e6():
 def _synthetic_private_metadata(root):
     """Scope the selftest's repository evidence to its temporary synthetic companion."""
     from scripts import private_storage
-    from types import SimpleNamespace
     root = Path(root).resolve()
 
     def repository(existing):
@@ -197,19 +196,7 @@ def _synthetic_private_metadata(root):
             raise ValueError('selftest attempted to leave its temporary companion')
         return root
 
-    def proof(repo):
-        assert repo == root
-        return SimpleNamespace(root=str(root), repositories=('example/synthetic-promotion-config',),
-                               signature='synthetic-publication')
-
-    def read(proof, *arguments):
-        assert arguments == ('rev-parse', '--verify', 'HEAD')
-        return SimpleNamespace(returncode=0, stdout='1'*40)
-
-    api = SimpleNamespace(GitError=RuntimeError, prove_private_companion=proof,
-                          read_private_companion_git=read)
-
-    with patch.object(private_storage, 'repository', repository), patch.object(private_storage, '_guard_api', lambda: api):
+    with patch.object(private_storage, 'repository', repository):
         yield
 
 

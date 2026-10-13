@@ -137,7 +137,7 @@ def main():
         write(os.path.join(out, "runbooks", fn), body, a.force)
 
     print("\nNext:")
-    print("  Initialize this directory as a separate PRIVATE Git companion with a verified origin.")
+    print("  Initialize this directory as a separate PRIVATE Git companion outside the source repository.")
     print("  1) Fill product.json (name, aff_base, compliance.*) and add channels to registry.json.")
     print("  2) Per channel: channels/<slug>/policy.json (caps/gap/warmup/backoff) +")
     print("     secrets/<slug>.env (real values, gitignored) + secrets/<slug>.env.template.")

@@ -4,6 +4,13 @@ All notable changes to this project are documented here (Keep a Changelog style)
 
 ## [Unreleased]
 
+### Removed
+- Runtime PRIVATE proof: `private_storage` no longer calls the Guards `prove_private_companion`,
+  `read_private_companion_git` or `storage_contract.authorize_artifact_write`, and no runtime path
+  starts Git. Destinations are checked by path only (separate Git worktree outside the source tree,
+  no `.git` traversal or hardlinks); `doctor` reports the companion root instead of publication
+  identities. Commit-time gates are unchanged.
+
 ### Credentials
 - `secrets/*.env` credential files are now documented and declared (`storage.contract.json`,
   persistence `transient`) as gitignored projections generated from an external credential store,

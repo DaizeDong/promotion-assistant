@@ -7,32 +7,9 @@ import pytest
 
 from scripts import cli, growth, participation, private_storage, throttle
 
-@pytest.mark.parametrize('selected_host', [None, 'github.com', 'github.example.invalid'])
-@pytest.mark.parametrize('allowed', [False, True])
-def test_publication_report_delegates_without_clearing_process_policy(
-        tmp_path, monkeypatch, selected_host, allowed):
-    if selected_host is None:
-        monkeypatch.delenv('GH_HOST', raising=False)
-    else:
-        monkeypatch.setenv('GH_HOST', selected_host)
-    monkeypatch.setenv('GIT_CONFIG_COUNT', '5')
-    api = private_storage._guard_api()
-    calls = []
-    def proof(repo):
-        calls.append(repo)
-        assert private_storage.os.environ.get('GH_HOST') == selected_host
-        assert private_storage.os.environ['GIT_CONFIG_COUNT'] == '5'
-        if not allowed:
-            raise api.GitError('synthetic unsafe effective policy')
-        return SimpleNamespace(root=str(repo), repositories=('example/synthetic-promotion-config',),
-                               signature='synthetic-publication')
-    monkeypatch.setattr(api, 'prove_private_companion', proof)
-    if allowed:
-        assert private_storage.publication_destinations(tmp_path) == ('example/synthetic-promotion-config',)
-    else:
-        with pytest.raises(ValueError, match='PRIVATE companion verification failed'):
-            private_storage.publication_destinations(tmp_path)
-    assert calls == [tmp_path]
+def test_companion_root_is_a_path_check(tmp_path):
+    (tmp_path / ".git").mkdir()
+    assert private_storage.companion_root(tmp_path / "metrics" / "state.json") == tmp_path.resolve()
 
 
 def instance(path, now):

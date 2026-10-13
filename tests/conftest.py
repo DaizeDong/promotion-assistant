@@ -30,8 +30,6 @@ _real_run = subprocess.run
 
 
 def _safe_process(argv, *args, **kwargs):
-    if isinstance(argv, (list, tuple)) and argv[0] == 'git' and 'check-ignore' in argv:
-        return _real_run(argv, *args, **kwargs)
     raise AssertionError('test attempted an unmocked external process')
 
 
@@ -77,19 +75,5 @@ def synthetic_private_metadata(monkeypatch, request):
         return next((node for node in (existing, *existing.parents)
                      if (node/'product.json').is_file() or (node/'.git').exists()), existing)
 
-    from types import SimpleNamespace
-
-    def proof(repo, visibility_map=None):
-        return SimpleNamespace(root=str(repo), repositories=('example/synthetic-promotion-config',),
-                               signature='synthetic-publication')
-
-    def read(proof, *arguments):
-        return SimpleNamespace(returncode=1 if arguments[0] == 'check-ignore' else 0, stdout='1'*40)
-
-    api = SimpleNamespace(GitError=RuntimeError, prove_private_companion=proof,
-                          read_private_companion_git=read)
-
     monkeypatch.setattr(private_storage, 'repository', repository)
-    monkeypatch.setattr(private_storage, '_guard_api', lambda: api)
-    monkeypatch.setattr(private_storage._storage_api(), 'load_boundary', lambda: api)
     return actual_repository

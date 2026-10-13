@@ -92,7 +92,7 @@ The source thread and final `give` or `ask` type are required for every particip
    level-skipping), lognormal jitter, per-account variants + content-hash dedup. Random delay alone
    is NOT safety.
 4. **Private storage.** Real copy, audiences, consent and runtime DATA are versioned in the
-   verified PRIVATE companion. `secrets/*.env` credentials are gitignored projections generated
+   PRIVATE companion. `secrets/*.env` credentials are gitignored projections generated
    from an external credential store and are never versioned anywhere; see
    [CONFIG.md](../../CONFIG.md#private-credentials-e6). No real values belong in this public skill tree.
 5. **Don't reimplement the base.** Scheduling → `schedule-reminder` CLI only (never its .db/SQL);

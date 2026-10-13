@@ -143,30 +143,8 @@ def test_missing_email_helper_can_retry_exact_saved_action(case, monkeypatch):
     assert [payload['idempotency_key'] for payload in calls] == keys
 
 
-def test_shared_admission_failure_stops_storage(case, monkeypatch):
-    api = private_storage._guard_api()
-    calls = []
-    def refused(repo):
-        calls.append(repo)
-        raise api.GitError('synthetic PUBLIC or unknown route')
-    monkeypatch.setattr(api, 'prove_private_companion', refused)
-    with pytest.raises(ValueError, match='PRIVATE companion verification failed'):
-        private_storage.prove(case['root']/'metrics/state.json')
-    assert calls == [case['root']]
-
-
-def test_private_proof_names_all_accepted_destinations_and_is_fresh(case, monkeypatch):
-    api = private_storage._guard_api()
-    assert private_storage.publication_destinations(case['root']) == ('example/synthetic-promotion-config',)
-    path = case['root']/'metrics/events.jsonl'
-    events.append(path, events.make_event('synthetic', 'drafted'))
-    previous = path.read_bytes()
-    def refused(repo):
-        raise api.GitError('synthetic visibility changed')
-    monkeypatch.setattr(api, 'prove_private_companion', refused)
-    with pytest.raises(ValueError):
-        events.append(path, events.make_event('synthetic', 'drafted'))
-    assert path.read_bytes() == previous
+def test_companion_root_names_the_separate_worktree(case):
+    assert private_storage.companion_root(case['root']/'metrics/state.json') == case['root']
 
 
 def reserve(thr, key, *, policy=None, payload=None, action='post'):
@@ -459,7 +437,7 @@ def test_existing_output_hardlinks_are_refused(case, name):
     os.link(source, target)
     assert target.stat().st_nlink == 2
     with pytest.raises(ValueError, match='hardlink'):
-        private_storage.prove(target)
+        private_storage.check(target)
     assert source.read_text() == target.read_text() == 'synthetic retained content'
 
 

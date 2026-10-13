@@ -18,14 +18,11 @@ through to another product. Companion discovery applies only when no environment
    proven sibling `promotion-assistant-config/` beside this repository first. There is no XDG location.
 
 If none resolves, the engine fails closed with a clear message (it never invents a default product).
-The selected directory must belong to a separate versioned PRIVATE Git companion. Git resolves
-ordinary and linked worktrees. Every effective fetch and push URL on every remote must resolve
-to the matching PRIVATE GitHub identity. Each operation obtains a new proof through the pinned
-Guards API, using the local `~/.pii-guard/visibility.json` receipt and both physical and effective
-Git configuration. Missing, stale, malformed or unknown evidence fails; storage operations do not
-make network visibility queries or refresh receipts. See the [shared contract](guards/COMPANION.md#verifying-a-companion).
-PUBLIC, unknown, unversioned, source-tree, escaping canonical DATA paths and hardlinked runtime
-files fail before use. `doctor` names the accepted PRIVATE publication identities.
+The selected directory must belong to a separate versioned PRIVATE Git companion. Runtime checks
+are path-only and start no process: the nearest `.git` (ordinary or linked worktree) must exist
+and lie outside this source tree. Unversioned, source-tree, `.git`-traversing or escaping DATA
+paths and hardlinked runtime files fail before use. Repository visibility is not checked at
+runtime; keep the companion PRIVATE. `doctor` names the resolved companion root.
 Local absolute helper/interpreter paths are resources and need not be inside the companion.
 
 ## Schema (E1)
@@ -78,7 +75,7 @@ python scripts/init_config.py --out <companion dir>   # your PRIVATE companion c
 # 2. Point the skill at it (skip when the companion sits beside this repository):
 export PROMO_CONFIG_DIR=<companion dir>
 
-# 3. Use a separate Git companion with a committed HEAD and PRIVATE fetch/push destinations on every remote.
+# 3. Use a separate PRIVATE Git companion outside this repository.
 # 4. Fill product.json + registry.json + channels/<slug>/policy.json and secrets/runtime.env;
 #    commit the PRIVATE companion and confirm local readiness:
 python scripts/verify_config.py           # doctor: PASS/FAIL per check, names what is missing

@@ -34,9 +34,9 @@ def channels(cfg, env=None):
 def doctor(cfg, env=None, channel=None):
     rows = channels(cfg, env)
     rows = [row for row in rows if channel is None or row['slug'] == channel]
-    names = private_storage.publication_destinations(cfg.root)
+    companion = private_storage.companion_root(cfg.root)
     checks = [{'name': message, 'ok': False} for message in cfg.settings_errors()]
-    checks += [{'name': 'PRIVATE DATA publication destinations: '+', '.join(names), 'ok': True},
+    checks += [{'name': 'DATA companion outside the source tree: '+str(companion), 'ok': True},
               {'name': 'selected channels exist', 'ok': bool(rows)}]
     checks.extend({'name': row['slug']+' resources', 'ok': row['implemented'] and row['configured']}
                   for row in rows)

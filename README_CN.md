@@ -50,9 +50,8 @@ cd ~/.claude/plugins/promotion-assistant
 ```
 
 需要 Python 3.11 以上和 Git。JSON 配置不需要额外 Python 包，YAML 还需 PyYAML。
-运行快速开始前，先按下面的配置步骤建立独立的 PRIVATE 伴生仓。运行时核验
-`~/.pii-guard/visibility.json` 中的本地 PRIVATE 回执，不会调用 `gh` 或刷新缺失、过期的证据。
-证明流程见[伴生仓约定](guards/COMPANION.md#verifying-a-companion)。
+运行快速开始前，先按下面的配置步骤建立独立的 PRIVATE 伴生仓。运行时只检查所选目录是本仓之外的
+独立 Git 工作树，不查询仓库可见性。
 
 活动规划还需要兼容的 `schedule-reminder`。按[集成设置](skills/promotion-assistant/reference/integration.md#schedule-reminder-the-only-scheduling-surface)
 选择 `PROMO_REMINDER_PY`，检查 `creation-preflight`、`ensure`，并用当前运行环境的 Python
@@ -82,13 +81,13 @@ python skills/promotion-assistant/scripts/verify_config.py --config-dir <private
 ```
 
 骨架还需要填写 product/registry 的 `schema_version: 1`、产品名称和渠道 slug/platform，并完成
-PRIVATE fetch/push 证明及选定提供方的资源配置。初始化结束不代表就绪。初始化器生成的凭据排除
+独立伴生仓及选定提供方的资源配置。初始化结束不代表就绪。初始化器生成的凭据排除
 规则保留即可：`secrets/*.env` 由外部凭据库生成，任何仓都不纳入版本管理（见 [CONFIG.md](CONFIG.md#private-credentials-e6)）。
 提供方映射从所选目录的 `secrets/runtime.env` 读取，格式为 `KEY=VALUE`。
 
 切换前清除优先级更高的旧变量，再运行 doctor。`init` 检查已有配置，全局 `--config` 必须放在
 子命令前；`apply` 执行本地 doctor，不运行历史伴生仓 helper，也不修改 `~/.claude.json`。
-READY 只验证结构、PRIVATE 和本地资源。实际投递还须通过独立的进程级
+READY 只验证结构、伴生仓路径和本地资源。实际投递还须通过独立的进程级
 `PROMO_LIVE_AUTHORIZED_<CHANNEL>` 授权并取得提供方回执；邮件另需 `reviewed-email-v1` helper。
 
 ## 如何触发

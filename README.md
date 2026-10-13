@@ -56,9 +56,8 @@ cd ~/.claude/plugins/promotion-assistant
 
 Use Python 3.11 or newer and Git. JSON configuration needs no extra Python package;
 YAML also needs PyYAML. Configure the separate PRIVATE companion below before running the
-quick start. Runtime storage verifies the local PRIVATE receipt at
-`~/.pii-guard/visibility.json`; it does not call `gh` or refresh missing/stale evidence.
-Follow the [companion contract](guards/COMPANION.md#verifying-a-companion) for that proof.
+quick start. Runtime storage checks only that the selected root is a separate Git worktree
+outside this repository; it does not query repository visibility.
 
 Planning requires a compatible `schedule-reminder` installation. Follow
 [integration setup](skills/promotion-assistant/reference/integration.md#schedule-reminder-the-only-scheduling-surface)
@@ -90,7 +89,7 @@ python skills/promotion-assistant/scripts/verify_config.py --config-dir <private
 ```
 
 The skeleton needs product/registry `schema_version: 1`, product name and channel slug/platform,
-plus PRIVATE fetch/push proof and the selected provider resources. It is not ready immediately
+plus the separate companion and the selected provider resources. It is not ready immediately
 after initialization. Keep the initializer's credential exclusions: `secrets/*.env` files are
 generated from an external credential store and never versioned ([CONFIG.md](CONFIG.md#private-credentials-e6)).
 Provider mappings come from the selected `secrets/runtime.env` as `KEY=VALUE`.
@@ -98,7 +97,7 @@ Provider mappings come from the selected `secrets/runtime.env` as `KEY=VALUE`.
 Clear stale higher-priority selectors before switching and rerun doctor. `init` checks an existing
 configuration, with global `--config` placed before the subcommand; `apply` performs the local
 doctor check without executing historical companion helpers or changing `~/.claude.json`.
-READY covers schema, PRIVATE and local-resource checks. The separate process-local
+READY covers schema, companion path and local-resource checks. The separate process-local
 `PROMO_LIVE_AUTHORIZED_<CHANNEL>` gate and provider receipts determine authorized live delivery;
 email also requires a `reviewed-email-v1` helper.
 

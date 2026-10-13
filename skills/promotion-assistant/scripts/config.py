@@ -19,7 +19,7 @@ import json
 import os
 import re
 from pathlib import Path
-from .private_storage import prove
+from .private_storage import check
 
 ROOT = Path(__file__).resolve().parents[3]
 SKILL = "promotion-assistant"
@@ -92,7 +92,7 @@ class Config:
 
     def __init__(self, root: Path):
         try:
-            self.root = prove(root)
+            self.root = check(root)
             self.product = _load_doc(self.data_path('product.json'))
             self.registry = _load_doc(self.data_path('registry.json'))
             if self.registry is None:
@@ -223,7 +223,7 @@ class Config:
 
     def data_path(self, *parts) -> Path:
         try:
-            path = prove(self.root.joinpath(*parts))
+            path = check(self.root.joinpath(*parts))
             if not path.is_relative_to(self.root):
                 raise ValueError('runtime path escapes selected config root')
             return path

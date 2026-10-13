@@ -44,11 +44,11 @@ end and a separate exact-file retirement is reviewed.
 
 Schedule-request receipts and adjacent staging under `metrics/schedule-requests` are declared
 explicitly. Keep exact request identities until plans, scheduler registrations and retries close.
-Runtime writers use the pinned Guards artifact authorizer; undeclared, ignored or retired
-destinations cannot receive new writes. Core locks remain versioned and protected.
+Runtime writers check only that each destination is inside the separate companion worktree and
+outside this source tree. Core locks remain versioned and protected.
 
 Use skill-smith's shared `storage_contract.py` for contract validation and metadata
-inspection of a verified PRIVATE companion. It does not execute domain schemas.
+inspection of the PRIVATE companion. It does not execute domain schemas.
 Before a reviewed removal, prove the writer has stopped and resolve uncertain
 delivery or commit outcomes. Generic cleanup must preserve lock files. Retention
 ends by dependency and purpose, and local removal does not erase Git history.

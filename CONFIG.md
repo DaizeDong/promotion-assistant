@@ -76,7 +76,8 @@ python scripts/init_config.py --out <companion dir>   # your PRIVATE companion c
 export PROMO_CONFIG_DIR=<companion dir>
 
 # 3. Use a separate PRIVATE Git companion outside this repository.
-# 4. Fill product.json + registry.json + channels/<slug>/policy.json and secrets/runtime.env;
+# 4. Fill product.json + registry.json + channels/<slug>/policy.json, then generate secrets/runtime.env
+#    from your credential store (never write values into it by hand);
 #    commit the PRIVATE companion and confirm local readiness:
 python scripts/verify_config.py           # doctor: PASS/FAIL per check, names what is missing
 ```

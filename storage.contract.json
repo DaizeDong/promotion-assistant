@@ -359,14 +359,14 @@
     {
       "artifact_id": "companion_credential_capture",
       "path_pattern": "scripts/capture-key.ps1",
-      "purpose": "Selected companion credential provisioning helper.",
-      "schema": "Companion provisioning runbooks and secrets/README.md; the helper writes selected private credential files.",
+      "purpose": "Retired companion credential writer; it now refuses and points to the external credential store.",
+      "schema": "Companion provisioning runbooks and secrets/README.md; the helper no longer writes credential files; secrets/*.env are generated from the external credential store.",
       "producer": "Companion maintainer.",
-      "consumer_or_final_deliverable": "Reviewed credential capture and the following configuration application step.",
-      "rebuild_or_restore": "Restore the reviewed helper with its selected private credential backup or reauthorization procedure.",
+      "consumer_or_final_deliverable": "None; credential values are stored in the external credential store and secrets/*.env are regenerated from it.",
+      "rebuild_or_restore": "Do not restore a version that writes secrets/*.env; restore the credential store and regenerate the projections, or reauthorize with the provider.",
       "retention_rule": {
-        "class": "core",
-        "rule": "Preserve while current provisioning or restoration instructions select this helper. Retire only after those instructions and a validated replacement agree."
+        "class": "retired",
+        "rule": "Keep only as a refusal stub; remove once no companion runbook names it."
       }
     },
     {

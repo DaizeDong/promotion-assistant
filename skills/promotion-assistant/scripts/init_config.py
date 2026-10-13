@@ -89,7 +89,7 @@ it does not execute this companion directory or modify host-wide settings.
 
 RUNBOOKS = {
     'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential store, then regenerate secrets/*.env from the store. Select the root with PROMO_CONFIG_DIR, then run the source scripts/verify_config.py. secrets/runtime.env must be a registered output of the credential store (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
-    'live-authorize.md': '# Live authorization\n\nConfigure secrets/runtime.env and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
+    'live-authorize.md': '# Live authorization\n\nStore the channel credentials in the external credential store, regenerate secrets/runtime.env from it (never write values into it by hand) and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
     'ban-recovery.md': '# Recovery\n\nPause dispatch and reconcile state, scheduling receipts and unresolved provider outcomes before retrying. Preserve all protected lock and receipt files until their dependencies close.\n',
 }
 
@@ -140,8 +140,10 @@ def main():
     print("  Initialize this directory as a separate PRIVATE Git companion outside the source repository.")
     print("  1) Fill product.json (name, aff_base, compliance.*) and add channels to registry.json.")
     print("  2) Per channel: channels/<slug>/policy.json (caps/gap/warmup/backoff) +")
-    print("     secrets/<slug>.env (real values, gitignored) + secrets/<slug>.env.template.")
-    print("  3) Provision secrets/runtime.env according to the source CONFIG.md, then run source doctor.")
+    print("     secrets/<slug>.env.template (key names only). The real secrets/<slug>.env is generated")
+    print("     from your external credential store and stays gitignored; never write values into it by hand.")
+    print("  3) Register secrets/runtime.env as an output of your credential store and generate it (keys in the")
+    print("     source CONFIG.md), then run source doctor.")
     print("  4) export %s=%s   (or use the default path)" % (PRIMARY_ENV, out))
     print("  5) python scripts/verify_config.py   # doctor: confirms the config is ready")
     return 0

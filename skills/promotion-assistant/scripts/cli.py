@@ -350,7 +350,7 @@ def cmd_authorize(args):
     print("To go LIVE on channel %r (irreversible outreach — only after you control the account):" % args.channel)
     print("  1) set product.json send_mode = \"live\"")
     print("  2) export PROMO_LIVE_AUTHORIZED_%s=<any-non-empty-token>" % ch)
-    print("  3) configure secrets/runtime.env in the selected companion; run doctor")
+    print("  3) generate secrets/runtime.env in the selected companion from your credential store (never by hand); run doctor")
     print("Until BOTH are present, dispatch() simulates and writes metrics/dry-run.jsonl (zero egress).")
     return 0
 

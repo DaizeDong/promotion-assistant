@@ -10,6 +10,9 @@ All notable changes to this project are documented here (Keep a Changelog style)
   starts Git. Destinations are checked by path only (separate Git worktree outside the source tree,
   no `.git` traversal or hardlinks); `doctor` reports the companion root instead of publication
   identities. Commit-time gates are unchanged.
+- The `private_storage.authorize` forwarder and the repeat path checks left by the proof: the
+  post-fsync and pre-unlock rechecks, and the second check of paths that `Config.data_path` already
+  checked (run records and locks, `metrics_dir`, `compliance_dir`). Each destination is checked once.
 
 ### Credentials
 - `secrets/*.env` credential files are now documented and declared (`storage.contract.json`,

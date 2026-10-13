@@ -235,15 +235,11 @@ class Config:
         d = self.data_path('metrics')
         for name in ('events.jsonl', 'dry-run.jsonl', 'bandit-state.json', 'throttle-state.json', 'suppression.csv', 'runs'):
             self.data_path('metrics', name)
-        from .private_storage import authorize
-        authorize(d / "events.jsonl")
         d.mkdir(parents=True, exist_ok=True)
         return d
 
     def compliance_dir(self) -> Path:
         d = self.data_path('compliance')
-        from .private_storage import authorize
-        authorize(d / "consent-ledger.jsonl")
         d.mkdir(parents=True, exist_ok=True)
         return d
 

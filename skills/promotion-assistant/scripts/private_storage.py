@@ -74,11 +74,6 @@ def _read_current(path, missing=None):
         return missing
 
 
-def authorize(path):
-    """Path-only admission for a DATA write."""
-    return check(path)
-
-
 def read_text(path, *, missing=''):
     return _read_current(check(path), missing)
 
@@ -86,10 +81,9 @@ def read_text(path, *, missing=''):
 @contextmanager
 def exclusive(path, *, timeout=10):
     """Cooperating writers serialize; stale locks require explicit recovery."""
-    target = authorize(path)
+    target = check(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    lock = target.with_name('.'+target.name+'.lock')
-    authorize(lock)
+    lock = check(target.with_name('.'+target.name+'.lock'))
     deadline = time.monotonic()+timeout
     descriptor = None
     try:
@@ -104,8 +98,6 @@ def exclusive(path, *, timeout=10):
     finally:
         if descriptor is not None:
             os.close(descriptor)
-            if check(lock) != lock:
-                raise ValueError('runtime lock destination changed')
             lock.unlink()
 
 
@@ -116,14 +108,12 @@ def _replace(path, payload):
     try:
         if check(path) != path:
             raise ValueError('runtime state destination changed')
-        temporary = authorize(path.with_name('.'+path.name+'-'+uuid.uuid4().hex))
+        temporary = check(path.with_name('.'+path.name+'-'+uuid.uuid4().hex))
         descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'w', encoding='utf-8', newline='\n') as stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        if check(path) != path:
-            raise ValueError('runtime state destination changed')
         os.replace(temporary, path)
         temporary = None
     finally:

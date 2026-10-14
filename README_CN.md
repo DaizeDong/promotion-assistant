@@ -61,7 +61,6 @@ cd ~/.claude/plugins/promotion-assistant
 
 ```bash
 cd skills/promotion-assistant
-python scripts/selftest.py                          # E1-E12 验收闸(零外发)
 python scripts/cli.py doctor                          # 健康 / 合规 / dry-run 状态
 python scripts/cli.py plan --campaign <C>             # 内容日历 -> schedule-reminder
 python scripts/cli.py run  --campaign <C> --once      # 受闸 dispatch(默认 DRY-RUN)

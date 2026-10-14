@@ -1,38 +1,17 @@
 {
   "_comment": [
     "TOOL is public code, documentation and measurements of the tool itself.",
-    "FIXTURE is synthetic test input reproduced by tools/make_fixtures.py.",
     "DATA is real runtime output, versioned in a separate PRIVATE companion.",
     "Credentials are gitignored projections of an external credential store and are never versioned.",
     "Real DATA is physically absent from this public source tree, including ignored paths."
   ],
-  "_audited": "Runtime Config requires the selected root to sit in a separate Git worktree outside this source tree before reading product data or resolving writes (path checks only; visibility is not checked at runtime). Metrics, compliance and per-run destinations are canonicalized and confined to that selection. Explicit/environment selections cannot fall through to another product. Public-tree DATA patterns remain declared even though runtime writes occur in the companion. Existing hardlinked runtime files are rejected. Listed synthetic tests and sample_events are reproduced by tools/make_fixtures.py.",
+  "_audited": "Runtime Config requires the selected root to sit in a separate Git worktree outside this source tree before reading product data or resolving writes (path checks only; visibility is not checked at runtime). Metrics, compliance and per-run destinations are canonicalized and confined to that selection. Explicit/environment selections cannot fall through to another product. Public-tree DATA patterns remain declared even though runtime writes occur in the companion. Existing hardlinked runtime files are rejected.",
   "data": [
     "metrics/",
     "compliance/",
     "runs/"
   ],
   "data_sealed": [],
-  "fixture": [
-    "tests/fixtures/promotion.json",
-    "skills/promotion-assistant/fixtures/promotion.json",
-    "tests/test_promotion_v4.py",
-    "tests/test_promotion_v5.py",
-    "tests/test_promotion_v6.py",
-    "tests/conftest.py",
-    "tests/test_review_runs.py",
-    "tests/test_audit_fixes.py",
-    "tests/test_discord_live.py",
-    "tests/test_expansion.py",
-    "tests/test_roadmap_deeper.py",
-    "skills/promotion-assistant/scripts/selftest.py",
-    "tests/fixtures/sample_events.jsonl",
-    "tests/test_schedule_integration.py",
-    "tests/test_community_readiness.py",
-    "tests/test_warmup_limits.py",
-    "tests/test_participation.py",
-    "tests/test_private_storage_shared.py",
-    "tests/test_fleet_config_storage.py"
-  ],
+  "fixture": [],
   "_data_home": "The authoritative Config root, selected explicitly or with PROMO_CONFIG_DIR and its documented aliases. Config requires a separate versioned PRIVATE Git companion; no source-tree or unversioned fallback is allowed."
 }

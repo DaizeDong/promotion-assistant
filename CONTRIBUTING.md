@@ -10,30 +10,20 @@ evidence requirements described in [PHILOSOPHY.md](PHILOSOPHY.md).
    which fail-closed requires `product.json.send_mode=="live"` **and** env
    `PROMO_LIVE_AUTHORIZED_<CHANNEL>`. Never add a code path that bypasses that exit.
 2. **Compliance / throttle gates are fail-closed**, no "warn and send". Matchers must resist
-   evasion (unicode / homoglyph / `+tag` alias / mislabeled transport); see
-   `tests/test_compliance_hardening.py`. Widen the confusable map / rules, never loosen them.
-3. **Evaluation-driven.** Extend the `selftest.py` E1-E12 signals and `tests/` before the
-   implementation. The suite must stay green, it is the self-evolve merge gate.
-4. **Keep real data private.** Product copy and credentials never enter this public repository.
+   evasion (unicode / homoglyph / `+tag` alias / mislabeled transport). Widen the confusable map / rules, never loosen them.
+3. **Keep real data private.** Product copy and credentials never enter this public repository.
    `secrets/*.env` files are gitignored projections of an external credential store and are never
    versioned ([CONFIG.md](CONFIG.md#private-credentials-e6)). Adapters may read their selected
    credentials but must not log or echo them.
-5. **Don't reimplement the base.** Scheduling → the `schedule-reminder` CLI only (never its .db);
+4. **Don't reimplement the base.** Scheduling → the `schedule-reminder` CLI only (never its .db);
    alerts → the configured relay through [integration.md](skills/promotion-assistant/reference/integration.md).
-
-## Run the suite
-
-```bash
-python -m pytest tests/ -q
-python skills/promotion-assistant/scripts/selftest.py   # E1-E12 acceptance, zero egress
-```
 
 ## Conventions
 
 - Stdlib-first; the whole engine runs without third-party deps.
 - Everything product-specific is config (`PROMO_CONFIG_DIR`); the skill ships no copy or creds.
-- New advanced learning modules land as tested libraries first, then get wired into
-  `orchestrate.run_once` in a later iteration (see ROADMAP "Built + tested, pending wire-in").
+- New advanced learning modules land as libraries first, then get wired into
+  `orchestrate.run_once` in a later iteration (see ROADMAP "Built, pending wire-in").
 
 ## Version sync
 

@@ -16,8 +16,7 @@ This module implements three estimators over logged decisions
             the propensities OR the reward model is right, and lower variance than IPS when q_hat
             is decent. `clipped_ips` trades a little bias for bounded variance under extreme weights.
 
-Pure stdlib, deterministic. Red before this file existed; green after. Mutation-killable: break the
-1/p weighting and the de-bias / variance assertions in tests/test_ope_e21.py go red.
+Pure stdlib, deterministic.
 """
 from __future__ import annotations
 

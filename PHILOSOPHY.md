@@ -39,8 +39,5 @@ contract. A legacy email helper alone does not establish readiness.
 ## P5: Require measured regression evidence
 
 Incorrect funnel counts, stale-arm selection and unintended sending can invalidate the system's
-results. `selftest.py` (E1-E12) checks metrics exactness, bandit convergence and drift recovery,
-throttle limits, compliance fail-closure, dry-run zero-egress, propensity completeness,
-anti-fingerprint, delayed-conversion censoring and idempotency. Applicable checks must pass before
-behavior changes ship. Report failures and missing coverage explicitly; successful synthetic
+results. Report failures and missing coverage explicitly; successful synthetic
 checks do not establish live integration behavior or campaign outcomes.

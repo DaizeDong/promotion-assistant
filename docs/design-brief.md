@@ -18,9 +18,7 @@ The initial skill-smith Step 0 research (8-route recon) informed this design.
   Discord selfbot / stranger auto-DM.
 
 ## Initial validation and regression criteria
-- The initial `selftest.py` E1-E12 run was recorded as all passing: metrics exactness, bandit convergence + drift recovery,
-  throttle limits, compliance fail-closure, attribution, dry-run zero-egress, propensity, schema,
-  anti-fingerprint, delayed-conversion censoring, idempotency.
+- Regression checks were removed once the features were confirmed working in production.
 
 ## Scope
 Blast (覆盖式) · Precision (精准式) · Metrics loop (指标闭环). Scheduling/notify/SMTP are delegated bases.

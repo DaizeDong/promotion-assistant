@@ -68,7 +68,6 @@ using the current runtime's Python. An older `add`-only helper is incompatible.
 
 ```bash
 cd skills/promotion-assistant
-python scripts/selftest.py                          # E1-E12 acceptance gate (no egress)
 python scripts/cli.py doctor                          # health / compliance / dry-run status
 python scripts/cli.py plan --campaign <C>             # content calendar -> schedule-reminder
 python scripts/cli.py run  --campaign <C> --once      # gated dispatch (DRY-RUN by default)

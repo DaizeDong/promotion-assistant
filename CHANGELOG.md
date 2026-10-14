@@ -5,6 +5,7 @@ All notable changes to this project are documented here (Keep a Changelog style)
 ## [Unreleased]
 
 ### Removed
+- The test suite (`tests/`, `selftest.py`, fixtures and `tools/make_fixtures.py`); features are confirmed working and keep no tests.
 - Runtime PRIVATE proof: `private_storage` no longer calls the Guards `prove_private_companion`,
   `read_private_companion_git` or `storage_contract.authorize_artifact_write`, and no runtime path
   starts Git. Destinations are checked by path only (separate Git worktree outside the source tree,

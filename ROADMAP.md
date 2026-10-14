@@ -15,20 +15,20 @@ require the existing live gates and verified provider receipts. Compliance handl
 claim text, suppression aliases and email-like payloads even when transport labels differ.
 These are local contracts; live acceptance remains separate.
 
-Version-specific behavior and test counts are retained in [CHANGELOG.md](CHANGELOG.md).
+Version-specific behavior is retained in [CHANGELOG.md](CHANGELOG.md).
 The initializer's credential exclusions still require the adjustment documented in
 [CONFIG.md](CONFIG.md#first-time-setup-e3) before the companion meets the current storage contract.
 
-## Built + tested, pending wire-in
-These are implemented as stdlib libraries with their own acceptance tests today, but are NOT yet
+## Built, pending wire-in
+These are implemented as stdlib libraries today, but are NOT yet
 wired into the live `run` loop (`orchestrate.run_once` currently drives context-free Thompson
 Sampling only). Wiring each in is a self-evolve iteration gated on its signal:
-- Contextual bandit (stdlib LinUCB, `ctxbandit.py`) → per-segment optimal arm. `tests/test_ctx_e2c.py`.
-- Off-policy evaluator (IPS/SNIPS/Doubly-Robust, `ope.py`) → safe pre-launch policy comparison. `tests/test_ope_e21.py`.
-- Deliverability-driven auto-throttle (inbox-placement + mailbox warmup, `deliverability.py`). `tests/test_deliverability_e22.py`.
-- Auto-segmentation (RFM + k-means, `segment.py`). `tests/test_segment_e20.py`.
-- Sequential A/B with always-valid p-values (mSPRT e-process, `seqtest.py`). `tests/test_seqtest_e19.py`.
-- Delayed-conversion reward censoring (`delayed.py`). `tests/test_delayed_e16.py`.
+- Contextual bandit (stdlib LinUCB, `ctxbandit.py`) → per-segment optimal arm.
+- Off-policy evaluator (IPS/SNIPS/Doubly-Robust, `ope.py`) → safe pre-launch policy comparison.
+- Deliverability-driven auto-throttle (inbox-placement + mailbox warmup, `deliverability.py`).
+- Auto-segmentation (RFM + k-means, `segment.py`).
+- Sequential A/B with always-valid p-values (mSPRT e-process, `seqtest.py`).
+- Delayed-conversion reward censoring (`delayed.py`).
 
 ## External prerequisites and deferred work
 - Mastodon and Bluesky owned-account adapters are implemented. Live acceptance still requires

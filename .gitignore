@@ -29,7 +29,6 @@ claude.json
 # defensive default: ignore stray runtime .jsonl, but allow committed test fixtures and
 # reference shards (narrowed from a blanket *.jsonl that silently swallowed legit fixtures).
 *.jsonl
-!tests/**/*.jsonl
 !**/reference/**/*.jsonl
 .claude.json
 
@@ -38,5 +37,4 @@ claude.json
 
 # build/iteration meta-notes — not skill content, keep local only
 PROGRESS.md
-.pytest_cache/
 scratchpad/

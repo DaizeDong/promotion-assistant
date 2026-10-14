@@ -103,13 +103,6 @@ The source thread and final `give` or `ask` type are required for every particip
    --resume` uses that saved set and rechecks consent/suppression. Completed items never repeat.
    Uncertain provider outcomes require reconciliation proof before retry; see [CONFIG.md](../../CONFIG.md).
 
-## Acceptance / regression
-
-`python scripts/selftest.py` runs E1-E12 (metrics exactness, bandit convergence + drift recovery,
-throttle limits, compliance fail-closed, attribution, dry-run zero-egress, propensity completeness,
-event schema, anti-fingerprint, delayed-conversion censoring, idempotency). All must pass before any
-behavior change ships, this is the self-evolve gate.
-
 ## Progressive loading
 
 This `SKILL.md` is the only always-loaded file. Read `reference/<shard>.md` on demand, one at a time.

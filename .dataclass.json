@@ -13,5 +13,5 @@
   ],
   "data_sealed": [],
   "fixture": [],
-  "_data_home": "The authoritative Config root, selected explicitly or with PROMO_CONFIG_DIR and its documented aliases. Config requires a separate versioned PRIVATE Git companion; no source-tree or unversioned fallback is allowed."
+  "_data_home": "The authoritative Config root, selected explicitly or with PROMOTION_ASSISTANT_CONFIG. Config requires a separate versioned PRIVATE Git companion; no source-tree or unversioned fallback is allowed."
 }

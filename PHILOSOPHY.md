@@ -8,7 +8,7 @@ copying the engine or treating simulated results as delivery evidence.
 
 The channel matrix, six-layer funnel, selection rule and compliance gate are reusable methods.
 Caps, audiences, copy and thresholds change with products and platforms. Keep reusable code in
-the public skill and product values in the PRIVATE companion selected by `PROMO_CONFIG_DIR`.
+the public skill and product values in the PRIVATE companion selected by `PROMOTION_ASSISTANT_CONFIG`.
 Per-channel policy supplies limits; observed rate-limit responses inform throttling.
 Provider resources bind to that selected companion on every dispatch, so switching products
 does not inherit another product's ambient credentials. Source-owned artifact admission makes

@@ -21,7 +21,7 @@ evidence requirements described in [PHILOSOPHY.md](PHILOSOPHY.md).
 ## Conventions
 
 - Stdlib-first; the whole engine runs without third-party deps.
-- Everything product-specific is config (`PROMO_CONFIG_DIR`); the skill ships no copy or creds.
+- Everything product-specific is config (`PROMOTION_ASSISTANT_CONFIG`); the skill ships no copy or creds.
 - New advanced learning modules land as libraries first, then get wired into
   `orchestrate.run_once` in a later iteration (see ROADMAP "Built, pending wire-in").
 

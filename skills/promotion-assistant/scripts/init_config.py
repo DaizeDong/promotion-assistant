@@ -8,17 +8,13 @@ writes or echoes secrets.
 This mirrors CONFIG.md and reference/config-schema.md. It writes setup guidance for
 selected-root secrets/runtime.env. No companion apply helper or MCP template is required.
 
-Discovery convention the skill uses (also in CONFIG.md, E2); first hit wins:
-  1. $PROMO_CONFIG_DIR                        (primary, recommended)
-  2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
-  3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
-  4. the proven sibling promotion-assistant-config beside this repository, then the rest of
-     the fleet-guards companion discovery (fleet-guards COMPANION.md). There is no XDG location.
+Discovery convention the skill uses (also in CONFIG.md, E2): $PROMOTION_ASSISTANT_CONFIG, then
+the proven sibling promotion-assistant-config through the fleet-guards companion resolver.
 
 Usage:
   python init_config.py [--out <dir>] [--force]
 
---out   target config-repo dir (required unless PROMO_CONFIG_DIR or an alias selects one; the
+--out   target config-repo dir (required unless PROMOTION_ASSISTANT_CONFIG selects one; the
         initializer has no default location).
 Stdlib only. Cross-platform.
 """
@@ -27,10 +23,9 @@ import json
 import os
 import sys
 
-PRIMARY_ENV = "PROMO_CONFIG_DIR"
-ALIASES = ("PROMOTION_ASSISTANT_CONFIG", "PROMOTION_ASSISTANT_CONFIG_DIR")
+PRIMARY_ENV = "PROMOTION_ASSISTANT_CONFIG"
 NO_COMPANION = ("no destination: pass --out <dir> to your PRIVATE companion clone "
-                "(promotion-assistant-config beside this repository), or set PROMO_CONFIG_DIR")
+                "(promotion-assistant-config beside this repository), or set PROMOTION_ASSISTANT_CONFIG")
 
 # Mode B secrets gate for the COMPANION config repo (config-spec E6). Real values never enter git.
 GITIGNORE = """\
@@ -88,7 +83,7 @@ it does not execute this companion directory or modify host-wide settings.
 """
 
 RUNBOOKS = {
-    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential store, then regenerate secrets/*.env from the store. Select the root with PROMO_CONFIG_DIR, then run the source scripts/verify_config.py. secrets/runtime.env must be a registered output of the credential store (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
+    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential store, then regenerate secrets/*.env from the store. Select the root with PROMOTION_ASSISTANT_CONFIG, then run the source scripts/verify_config.py. secrets/runtime.env must be a registered output of the credential store (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
     'live-authorize.md': '# Live authorization\n\nStore the channel credentials in the external credential store, regenerate secrets/runtime.env from it (never write values into it by hand) and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
     'ban-recovery.md': '# Recovery\n\nPause dispatch and reconcile state, scheduling receipts and unresolved provider outcomes before retrying. Preserve all protected lock and receipt files until their dependencies close.\n',
 }
@@ -110,17 +105,16 @@ def jdump(obj):
 
 def main():
     ap = argparse.ArgumentParser(description="Stamp a spec-conformant promotion-assistant config repo (Mode B).")
-    ap.add_argument("--out", default=None, help="target config-repo dir (default: $PROMO_CONFIG_DIR or an alias)")
+    ap.add_argument("--out", default=None, help="target config-repo dir (default: $PROMOTION_ASSISTANT_CONFIG)")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 
-    selected = a.out or next((os.environ[v] for v in (PRIMARY_ENV,) + ALIASES if os.environ.get(v)), None)
+    selected = a.out or os.environ.get(PRIMARY_ENV)
     if not selected:
         ap.error(NO_COMPANION)
     out = os.path.abspath(os.path.expanduser(selected))
     print("Init promotion-assistant config repo (Mode B) at %s" % out)
-    print("Discovery env var: %s  (aliases PROMOTION_ASSISTANT_CONFIG[_DIR]; then the proven sibling companion)"
-          % PRIMARY_ENV)
+    print("Discovery env var: %s  (then the proven sibling companion)" % PRIMARY_ENV)
 
     write(os.path.join(out, "product.json"), jdump(PRODUCT_JSON), a.force)
     write(os.path.join(out, "registry.json"), jdump(REGISTRY_JSON), a.force)

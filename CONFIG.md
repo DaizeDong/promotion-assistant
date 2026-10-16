@@ -7,14 +7,11 @@ the in-engine field reference is [`skills/promotion-assistant/reference/config-s
 
 ## Discovery convention (how the skill finds your config), E2
 
-An explicit `--config` path is authoritative. Otherwise `scripts/config.py` uses the highest
-nonempty environment selection below. A missing or malformed selection fails without falling
-through to another product. Companion discovery applies only when no environment selection exists:
+An explicit `--config` path is authoritative. Otherwise `scripts/config.py` uses the order below.
+A set but missing or malformed selection fails without falling through to another product:
 
-1. `$PROMO_CONFIG_DIR`, **primary**, recommended (the canonical name this skill uses).
-2. `$PROMOTION_ASSISTANT_CONFIG`, config-spec canonical alias (accepted).
-3. `$PROMOTION_ASSISTANT_CONFIG_DIR`, config-spec canonical alias (accepted).
-4. [Guards companion discovery](https://github.com/DaizeDong/fleet-guards/blob/main/COMPANION.md) through the installed `fleet_guards.runtime` resolver, which tries the
+1. `$PROMOTION_ASSISTANT_CONFIG`.
+2. [Guards companion discovery](https://github.com/DaizeDong/fleet-guards/blob/main/COMPANION.md) through the installed `fleet_guards.runtime` resolver, which tries the
    proven sibling `promotion-assistant-config/` beside this repository first. There is no XDG location.
 
 If none resolves, the engine fails closed with a clear message (it never invents a default product).
@@ -73,7 +70,7 @@ cd skills/promotion-assistant
 python scripts/init_config.py --out <companion dir>   # your PRIVATE companion clone
 
 # 2. Point the skill at it (skip when the companion sits beside this repository):
-export PROMO_CONFIG_DIR=<companion dir>
+export PROMOTION_ASSISTANT_CONFIG=<companion dir>
 
 # 3. Use a separate PRIVATE Git companion outside this repository.
 # 4. Fill product.json + registry.json + channels/<slug>/policy.json, then generate secrets/runtime.env
@@ -101,17 +98,16 @@ the global `--config` option must precede the subcommand.
 
 ## Switching between configs (hot-swap), E5
 
-A selected root owns product data and `secrets/runtime.env`. Clear stale higher-priority selectors,
-select the new root and rerun doctor. Credential binding changes with that root. Live authorization
+A selected root owns product data and `secrets/runtime.env`. Select the new root and rerun doctor. Credential binding changes with that root. Live authorization
 remains process-local and must be reviewed for the selected product:
 
 ```bash
-export PROMO_CONFIG_DIR=~/configs/product-a     # config A
-export PROMO_CONFIG_DIR=~/configs/product-b     # config B — same skill, different product
+export PROMOTION_ASSISTANT_CONFIG=~/configs/product-a     # config A
+export PROMOTION_ASSISTANT_CONFIG=~/configs/product-b     # config B — same skill, different product
 ```
 
 Verify a swap: `python scripts/init_config.py --out ~/configs/product-a` and `--out ~/configs/product-b`,
-run `python scripts/verify_config.py --config-dir <each>`, then flip `$PROMO_CONFIG_DIR`, both must
+run `python scripts/verify_config.py --config-dir <each>`, then flip `$PROMOTION_ASSISTANT_CONFIG`, both must
 report READY after their PRIVATE origins and required channel resources are configured.
 
 ## Review, delivery and recovery

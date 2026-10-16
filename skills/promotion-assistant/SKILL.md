@@ -23,7 +23,7 @@ See [design rationale](../../PHILOSOPHY.md) and [configuration](../../CONFIG.md)
 
 | layer | job | shard |
 |---|---|---|
-| L0 config/creds | locate per-product config and PRIVATE credentials (`PROMO_CONFIG_DIR`) | `reference/config-schema.md` |
+| L0 config/creds | locate per-product config and PRIVATE credentials (`PROMOTION_ASSISTANT_CONFIG`) | `reference/config-schema.md` |
 | L1 orchestration | plan→`schedule-reminder`; run `--once/--daemon`; alerts→Discord relay | `reference/integration.md` |
 | L2 channels | one provider/platform (`publish/engage/dm/read_metrics`) | `reference/channels.md` |
 | L3 compliance/throttle | fail-closed gate + token-bucket+AIMD + warmup + the dry-run exit | `reference/compliance.md` |

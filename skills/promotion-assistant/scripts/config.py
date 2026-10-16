@@ -5,12 +5,8 @@ Resolves the selected PRIVATE companion and loads product/channel configuration.
 Provider resources are read from its secrets/runtime.env without changing global
 process environment. Live authorization remains a separate process-local gate.
 
-Discovery order (first hit wins):
-  1. $PROMO_CONFIG_DIR                        (explicit, recommended — primary)
-  2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
-  3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
-  4. the proven sibling promotion-assistant-config beside this repository, then the rest of
-     the fleet-guards companion discovery (fleet-guards COMPANION.md). There is no XDG location.
+An explicit path wins; otherwise the fleet-guards companion resolver selects the root
+($PROMOTION_ASSISTANT_CONFIG, then the proven sibling promotion-assistant-config).
 """
 from __future__ import annotations
 
@@ -35,12 +31,8 @@ class ConfigError(Exception):
 
 
 def find_config_dir(explicit: str | None = None) -> Path:
-    selected = explicit
-    # env vars: PROMO_CONFIG_DIR stays primary (the user-chosen canonical name); the
-    # config-spec canonical aliases are honored too so spec and code agree (additive).
-    for ev in ("PROMO_CONFIG_DIR", "PROMOTION_ASSISTANT_CONFIG", "PROMOTION_ASSISTANT_CONFIG_DIR"):
-        if selected is None and os.environ.get(ev):
-            selected = os.environ[ev]
+    # A set-but-missing PROMOTION_ASSISTANT_CONFIG fails here: the resolver would skip it.
+    selected = explicit if explicit is not None else os.environ.get("PROMOTION_ASSISTANT_CONFIG")
     if selected is not None:
         if not isinstance(selected, (str, os.PathLike)) or not str(selected).strip() or not Path(selected).expanduser().is_dir():
             raise ConfigError('selected config directory is missing or invalid')
@@ -50,7 +42,7 @@ def find_config_dir(explicit: str | None = None) -> Path:
         return found
     raise ConfigError(
         "no product config found. Create a PRIVATE companion repository with an origin and clone it "
-        "beside this repository as promotion-assistant-config, or set PROMO_CONFIG_DIR to it "
+        "beside this repository as promotion-assistant-config, or set PROMOTION_ASSISTANT_CONFIG to it "
         "(see runbooks/new-machine.md)."
     )
 

@@ -12,16 +12,11 @@
   "settings": {
     "schema_document": "CONFIG.md",
     "discovery_document": "CONFIG.md",
-    "environment": "PROMO_CONFIG_DIR",
-    "aliases": [
-      "PROMOTION_ASSISTANT_CONFIG",
-      "PROMOTION_ASSISTANT_CONFIG_DIR"
-    ],
+    "environment": "PROMOTION_ASSISTANT_CONFIG",
+    "aliases": [],
     "precedence": [
       "--config / --config-dir",
-      "PROMO_CONFIG_DIR",
       "PROMOTION_ASSISTANT_CONFIG",
-      "PROMOTION_ASSISTANT_CONFIG_DIR",
       "proven sibling companion"
     ],
     "required_fields": [

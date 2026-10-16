@@ -69,7 +69,7 @@ python scripts/cli.py report --funnel                 # 六层漏斗
 
 ## 配置
 
-建立独立、有提交历史的 PRIVATE 伴生仓，并将 `PROMO_CONFIG_DIR` 指向它。
+建立独立、有提交历史的 PRIVATE 伴生仓，并将 `PROMOTION_ASSISTANT_CONFIG` 指向它。
 [CONFIG.md](CONFIG.md)规定完整发现顺序、字段、凭据键和切换步骤；[DATA.md](DATA.md)规定保留和恢复。
 
 从仓库根运行：

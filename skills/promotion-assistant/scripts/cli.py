@@ -56,7 +56,7 @@ def cmd_init(args):
         print("product   :", cfg.product.get("name"), "| send_mode:", cfg.send_mode)
     except _config.ConfigError as e:
         print("no config yet ->", e)
-        print("create one from the template (see runbooks/new-machine.md) and set PROMO_CONFIG_DIR.")
+        print("create one from the template (see runbooks/new-machine.md) and set PROMOTION_ASSISTANT_CONFIG.")
         return 2
     return 0
 
@@ -395,7 +395,7 @@ def cmd_doctor(args):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="promotion-assistant")
-    p.add_argument("--config", help="path to product config repo (else $PROMO_CONFIG_DIR)")
+    p.add_argument("--config", help="path to product config repo (else $PROMOTION_ASSISTANT_CONFIG)")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init").set_defaults(fn=cmd_init)
     sc = sub.add_parser("channels"); sc.add_argument("what", nargs="?", default="list"); sc.add_argument("--json", action="store_true"); sc.set_defaults(fn=cmd_channels)

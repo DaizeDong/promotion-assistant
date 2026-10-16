@@ -76,7 +76,7 @@ python scripts/cli.py report --funnel                 # six-layer funnel
 
 ## Config
 
-Create a separate committed PRIVATE companion, then point `PROMO_CONFIG_DIR` at it.
+Create a separate committed PRIVATE companion, then point `PROMOTION_ASSISTANT_CONFIG` at it.
 [CONFIG.md](CONFIG.md) owns the complete discovery order, schema, credential keys and switching
 rules; [DATA.md](DATA.md) owns retention and recovery.
 

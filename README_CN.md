@@ -45,7 +45,7 @@ bandit 依靠已记录的反馈学习，所以事件身份和归因与选择公�
 或手动克隆：
 
 ```bash
-git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
 cd ~/.claude/plugins/promotion-assistant
 ```
 

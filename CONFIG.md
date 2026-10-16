@@ -14,7 +14,7 @@ through to another product. Companion discovery applies only when no environment
 1. `$PROMO_CONFIG_DIR`, **primary**, recommended (the canonical name this skill uses).
 2. `$PROMOTION_ASSISTANT_CONFIG`, config-spec canonical alias (accepted).
 3. `$PROMOTION_ASSISTANT_CONFIG_DIR`, config-spec canonical alias (accepted).
-4. [Guards companion discovery](guards/COMPANION.md) through the pinned resolver, which tries the
+4. [Guards companion discovery](https://github.com/DaizeDong/fleet-guards/blob/main/COMPANION.md) through the installed `fleet_guards.runtime` resolver, which tries the
    proven sibling `promotion-assistant-config/` beside this repository first. There is no XDG location.
 
 If none resolves, the engine fails closed with a clear message (it never invents a default product).

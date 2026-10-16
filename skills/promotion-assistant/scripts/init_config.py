@@ -13,7 +13,7 @@ Discovery convention the skill uses (also in CONFIG.md, E2); first hit wins:
   2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
   3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
   4. the proven sibling promotion-assistant-config beside this repository, then the rest of
-     the pinned guards companion discovery (guards/COMPANION.md). There is no XDG location.
+     the fleet-guards companion discovery (fleet-guards COMPANION.md). There is no XDG location.
 
 Usage:
   python init_config.py [--out <dir>] [--force]

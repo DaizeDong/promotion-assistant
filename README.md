@@ -50,7 +50,7 @@ channel requirements continue to apply to authorized live activity.
 Or clone manually:
 
 ```bash
-git clone --recurse-submodules https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
+git clone https://github.com/DaizeDong/promotion-assistant.git ~/.claude/plugins/promotion-assistant
 cd ~/.claude/plugins/promotion-assistant
 ```
 

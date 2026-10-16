@@ -10,11 +10,10 @@ Discovery order (first hit wins):
   2. $PROMOTION_ASSISTANT_CONFIG             (config-spec canonical alias)
   3. $PROMOTION_ASSISTANT_CONFIG_DIR         (config-spec canonical alias)
   4. the proven sibling promotion-assistant-config beside this repository, then the rest of
-     the pinned guards companion discovery (guards/COMPANION.md). There is no XDG location.
+     the fleet-guards companion discovery (fleet-guards COMPANION.md). There is no XDG location.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import re
@@ -57,15 +56,13 @@ def find_config_dir(explicit: str | None = None) -> Path:
 
 
 def _sibling_companion() -> Path | None:
-    """The companion the pinned guards resolver discovers (proven sibling first), or None."""
-    resolver = ROOT / "guards" / "tools" / "datadir.py"
-    if not resolver.is_file():
-        raise ConfigError("pinned guards resolver missing; run git submodule update --init guards")
-    spec = importlib.util.spec_from_file_location("_promotion_assistant_datadir", resolver)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    """The companion the installed fleet_guards resolver discovers (proven sibling first), or None."""
     try:
-        found = module.resolve_companion_root(SKILL, source_root=str(ROOT))
+        from fleet_guards.runtime import companion_resolver
+    except ImportError as exc:
+        raise ImportError('fleet_guards is not installed; run: pip install -e "$(git config --get fleet.guards)"') from exc
+    try:
+        found = companion_resolver(source_root=ROOT).resolve_companion_root(SKILL)
     except (OSError, ValueError, RuntimeError) as exc:
         raise ConfigError("cannot resolve the companion: %s" % exc) from exc
     return Path(found).resolve() if found else None

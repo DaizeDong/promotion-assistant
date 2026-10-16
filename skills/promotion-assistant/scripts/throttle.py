@@ -43,12 +43,11 @@ def _state_document(payload):
         raise ValueError('malformed throttle state; preserve it for explicit recovery') from exc
     if not isinstance(value, dict):
         raise ValueError('throttle state must be an object')
-    if 'schema_version' not in value:
-        value = {'schema_version': 1, 'buckets': value, 'reservations': {}, 'cooldowns': {}}
     if type(value.get('schema_version')) is not int or value['schema_version'] != 1 or not all(
             isinstance(value.get(key), dict) for key in ('buckets', 'reservations', 'cooldowns')):
         raise ValueError('unsupported throttle state schema')
-    fields = ('cap', 'base_cap', 'tokens', 'last_refill', 'cooldown_until', 'stable_since', 'last_action')
+    fields = ('cap', 'base_cap', 'tokens', 'last_refill', 'cooldown_until', 'stable_since', 'last_action',
+              'period_used')
     for key, bucket in value['buckets'].items():
         if not isinstance(key, str) or not isinstance(bucket, dict):
             raise ValueError('invalid throttle bucket')
@@ -57,11 +56,6 @@ def _state_document(payload):
             raise ValueError('invalid throttle bucket values')
         if bucket['tokens'] > bucket['cap']:
             raise ValueError('throttle tokens exceed durable capacity')
-        if ('period_used' in bucket and (type(bucket['period_used']) not in (int, float)
-                or not math.isfinite(bucket['period_used']) or bucket['period_used'] < 0)):
-            raise ValueError('invalid throttle period usage')
-        if 'usage_known' in bucket and type(bucket['usage_known']) is not bool:
-            raise ValueError('invalid throttle usage provenance')
     for key, reservation in value['reservations'].items():
         if (not isinstance(key, str) or not key or not isinstance(reservation, dict)
                 or not isinstance(reservation.get('binding'), str)
@@ -108,24 +102,13 @@ class Throttle:
         if not math.isfinite(cap) or cap < 0:
             raise ValueError('day_cap must be finite and nonnegative')
         key = self._key(account, platform, action)
-        # Read a valid legacy bucket once, preserving its consumed capacity.
-        legacy = "%s|%s|%s" % (account, platform, action)
-        if key not in self.state and legacy in self.state:
-            self.state[key] = self.state.pop(legacy)
         bucket = self.state.get(key)
         if bucket is None:
             bucket = {"cap": cap, "base_cap": cap, "tokens": cap, "last_refill": self.clock(),
                       "cooldown_until": 0.0, "stable_since": self.clock(), "last_action": 0.0,
-                      "period_used": 0.0, "usage_known": True}
+                      "period_used": 0.0}
             self.state[key] = bucket
         else:
-            if 'period_used' not in bucket:
-                # Clipped legacy AIMD tokens cannot prove how much was consumed.
-                # Keep the period and learned capacity; resume only at normal refill.
-                bucket['period_used'] = 0.0
-                bucket['usage_known'] = False
-                bucket['tokens'] = 0.0
-            bucket.setdefault('usage_known', True)
             if bucket['base_cap'] == 0 and bucket['cap'] == 0 and cap > 0:
                 bucket['cap'] = cap
             bucket['base_cap'] = cap
@@ -155,12 +138,9 @@ class Throttle:
         if elapsed >= 86400.0:
             bucket["tokens"] = min(bucket["cap"], bucket["base_cap"])
             bucket["period_used"] = 0.0
-            bucket["usage_known"] = True
             bucket["last_refill"] = now
             reuse = False
             elapsed = 0.0
-        if not bucket['usage_known']:
-            return False, 'legacy quota usage is unknown until refill', 86400.0-elapsed
         ceiling = min(bucket['cap'], bucket['base_cap'])
         if ceiling < 1.0 or (reuse and bucket['period_used'] > ceiling):
             return False, 'daily cap reached under current policy', 86400.0-elapsed

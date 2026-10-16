@@ -31,15 +31,23 @@ class ConfigError(Exception):
 
 
 def find_config_dir(explicit: str | None = None) -> Path:
-    # A set-but-missing PROMOTION_ASSISTANT_CONFIG fails here: the resolver would skip it.
-    selected = explicit if explicit is not None else os.environ.get("PROMOTION_ASSISTANT_CONFIG")
-    if selected is not None:
-        if not isinstance(selected, (str, os.PathLike)) or not str(selected).strip() or not Path(selected).expanduser().is_dir():
+    """An explicit CLI path (never inside this repo), else the companion the canonical resolver selects."""
+    resolver = _resolver()
+    if explicit is not None:
+        if not isinstance(explicit, (str, os.PathLike)) or not str(explicit).strip() or not Path(explicit).expanduser().is_dir():
             raise ConfigError('selected config directory is missing or invalid')
-        return Path(selected).expanduser().resolve()
-    found = _sibling_companion()
+        selected = Path(explicit).expanduser().resolve()
+        try:
+            resolver.assert_outside_own_repo(selected, SKILL)
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise ConfigError(str(exc)) from exc
+        return selected
+    try:
+        found = resolver.resolve_companion_root(SKILL)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ConfigError("cannot resolve the companion: %s" % exc) from exc
     if found is not None:
-        return found
+        return Path(found).resolve()
     raise ConfigError(
         "no product config found. Create a PRIVATE companion repository with an origin and clone it "
         "beside this repository as promotion-assistant-config, or set PROMOTION_ASSISTANT_CONFIG to it "
@@ -47,17 +55,12 @@ def find_config_dir(explicit: str | None = None) -> Path:
     )
 
 
-def _sibling_companion() -> Path | None:
-    """The companion the installed fleet_guards resolver discovers (proven sibling first), or None."""
+def _resolver():
     try:
         from fleet_guards.runtime import companion_resolver
     except ImportError as exc:
         raise ImportError('fleet_guards is not installed; run: pip install -e "$(git config --get fleet.guards)"') from exc
-    try:
-        found = companion_resolver(source_root=ROOT).resolve_companion_root(SKILL)
-    except (OSError, ValueError, RuntimeError) as exc:
-        raise ConfigError("cannot resolve the companion: %s" % exc) from exc
-    return Path(found).resolve() if found else None
+    return companion_resolver(source_root=ROOT)
 
 
 def _load_doc(path: Path):

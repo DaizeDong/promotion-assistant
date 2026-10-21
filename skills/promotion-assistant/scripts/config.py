@@ -2,8 +2,10 @@
 """L0 config/credential locator (product-agnostic).
 
 Resolves the selected PRIVATE companion and loads product/channel configuration.
-Provider resources are read from its secrets/runtime.env without changing global
-process environment. Live authorization remains a separate process-local gate.
+Provider resources are read from its runtime.env without changing global process
+environment; a cv:// value is resolved through the credvault library at read time, so
+the file holds references, not credentials. Live authorization remains a separate
+process-local gate.
 
 An explicit path wins; otherwise the fleet-guards companion resolver selects the root
 ($PROMOTION_ASSISTANT_CONFIG, then the proven sibling promotion-assistant-config).
@@ -61,6 +63,22 @@ def _resolver():
     except ImportError as exc:
         raise ImportError('fleet_guards is not installed; run: pip install -e "$(git config --get fleet.guards)"') from exc
     return companion_resolver(source_root=ROOT)
+
+
+def _resolve_ref(ref: str, number: int) -> str:
+    """One cv:// reference through the credvault library; failures never echo a value."""
+    try:
+        import credvault  # noqa: PLC0415
+    except ImportError:
+        raise ValueError('line %d is a cv:// reference but the credvault package is not importable; '
+                         'install it with pip install -e <credvault>/python' % number) from None
+    try:
+        value = credvault.get(ref).reveal()
+    except Exception as exc:  # every vault failure becomes one value-free message
+        raise ValueError('line %d: cannot resolve its cv:// reference (%s)' % (number, type(exc).__name__)) from None
+    if not value:
+        raise ValueError('line %d: its cv:// reference resolved to an empty value' % number)
+    return value
 
 
 def _load_doc(path: Path):
@@ -122,14 +140,17 @@ class Config:
         return errors
 
     def runtime_env(self):
-        """Read one selected-root resource binding; never inherit ambient credentials."""
+        """Read the selected root's runtime.env; never inherit ambient credentials.
+
+        A ``cv://<record>/<credential>`` value is resolved through the credvault library here,
+        at the moment of use; any other value is taken literally (paths, ids, flags)."""
         from .private_storage import read_text
         allowed = {'PROMO_SEND_GMAIL', 'PROMO_DISCORD_BOT_TOKEN',
                    'PROMO_DISCORD_ANNOUNCE_CHANNEL_ID', 'PROMO_DISCORD_ALLOW_EMBED',
                    'PROMO_MASTODON_INSTANCE', 'PROMO_MASTODON_TOKEN',
                    'PROMO_BLUESKY_HANDLE', 'PROMO_BLUESKY_APP_PASSWORD'}
         try:
-            body = read_text(self.data_path('secrets', 'runtime.env'), missing='')
+            body = read_text(self.data_path('runtime.env'), missing='')
             result = {}
             for number, line in enumerate(body.splitlines(), 1):
                 line = line.strip()
@@ -145,13 +166,13 @@ class Config:
                     value = value[1:-1]
                 if '\x00' in value or value.startswith('<'):
                     raise ValueError('unconfigured resource at line ' + str(number))
-                result[key] = value
+                result[key] = _resolve_ref(value, number) if value.startswith('cv://') else value
             if result.get('PROMO_SEND_GMAIL'):
                 helper = Path(result['PROMO_SEND_GMAIL']).expanduser()
                 result['PROMO_SEND_GMAIL'] = str(helper if helper.is_absolute() else self.root / helper)
             return result
         except (OSError, ValueError, RuntimeError) as exc:
-            raise ConfigError('selected secrets/runtime.env is invalid: ' + str(exc)) from exc
+            raise ConfigError('selected runtime.env is invalid: ' + str(exc)) from exc
 
     # --- product-level gates ---
     @property

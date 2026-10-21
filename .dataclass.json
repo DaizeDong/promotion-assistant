@@ -2,7 +2,7 @@
   "_comment": [
     "TOOL is public code, documentation and measurements of the tool itself.",
     "DATA is real runtime output, versioned in a separate PRIVATE companion.",
-    "Credentials are gitignored projections of an external credential store and are never versioned.",
+    "Credential values live only in an external credential vault; the companion's runtime.env names them by cv:// reference.",
     "Real DATA is physically absent from this public source tree, including ignored paths."
   ],
   "_audited": "Runtime Config requires the selected root to sit in a separate Git worktree outside this source tree before reading product data or resolving writes (path checks only; visibility is not checked at runtime). Metrics, compliance and per-run destinations are canonicalized and confined to that selection. Explicit/environment selections cannot fall through to another product. Public-tree DATA patterns remain declared even though runtime writes occur in the companion. Existing hardlinked runtime files are rejected.",

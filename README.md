@@ -89,9 +89,10 @@ python skills/promotion-assistant/scripts/verify_config.py --config-dir <private
 
 The skeleton needs product/registry `schema_version: 1`, product name and channel slug/platform,
 plus the separate companion and the selected provider resources. It is not ready immediately
-after initialization. Keep the initializer's credential exclusions: `secrets/*.env` files are
-generated from an external credential store and never versioned ([CONFIG.md](CONFIG.md#private-credentials-e6)).
-Provider mappings come from the selected `secrets/runtime.env` as `KEY=VALUE`.
+after initialization. Keep the initializer's credential exclusions: credential values stay in an
+external credential vault and are never versioned ([CONFIG.md](CONFIG.md#private-credentials-e6)).
+Provider mappings come from the selected companion's `runtime.env` as `KEY=VALUE`, where a
+credential is a `cv://<record>/<credential>` reference resolved at dispatch.
 
 Clear stale higher-priority selectors before switching and rerun doctor. `init` checks an existing
 configuration, with global `--config` placed before the subcommand; `apply` performs the local

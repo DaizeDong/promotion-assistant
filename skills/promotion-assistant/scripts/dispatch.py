@@ -162,7 +162,7 @@ def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
     try:
         resources = cfg.runtime_env()
     except ConfigError:
-        reason = 'selected runtime resources are invalid; repair secrets/runtime.env before retrying'
+        reason = 'selected runtime resources are invalid; repair runtime.env before retrying'
         receipt = providers._not_applied(payload, platform, reason)
         return result('failed', live=False, provider=receipt, receipt=receipt,
                       reason=reason, safe_to_retry=True)

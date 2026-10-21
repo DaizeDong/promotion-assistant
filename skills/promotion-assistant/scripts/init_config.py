@@ -6,7 +6,7 @@ produces byte-identical skeleton files, so two people generate the same structur
 writes or echoes secrets.
 
 This mirrors CONFIG.md and reference/config-schema.md. It writes setup guidance for
-selected-root secrets/runtime.env. No companion apply helper or MCP template is required.
+selected-root runtime.env. No companion apply helper or MCP template is required.
 
 Discovery convention the skill uses (also in CONFIG.md, E2): $PROMOTION_ASSISTANT_CONFIG, then
 the proven sibling promotion-assistant-config through the fleet-guards companion resolver.
@@ -36,6 +36,7 @@ secrets/*
 *.env
 !*.env.template
 !env.template
+!/runtime.env
 claude.json
 .claude.json
 *credentials*.json
@@ -52,13 +53,12 @@ claude.json
 SECRETS_README = """\
 # secrets/ — Mode B (gitignored)
 
-Provider resources live in `secrets/runtime.env` and are **gitignored** (see ../.gitignore).
-Every `*.env` here is a projection generated from an external credential store and is never
-versioned. Register a file as an output of that store before creating it, change values in the
-store and regenerate; never edit a projection by hand.
+Credential values never live in this repository. Provider resources are bound in `../runtime.env`
+as `cv://<record>/<credential>` references into the external credential vault, resolved when the
+source reads them. Anything here is **gitignored** (see ../.gitignore).
 
 Only `*.env.template` files and this README are committed. On a new machine restore the credential
-store, regenerate the projections, then run `python scripts/verify_config.py` from the skill repo.
+vault, then run `python scripts/verify_config.py` from the skill repo.
 Files MUST be UTF-8 without BOM.
 """
 
@@ -77,14 +77,14 @@ AUDIENCES_JSON = {"segments": {}}
 
 APPLY_README = """# Runtime resource validation
 
-The source reads secrets/runtime.env from the selected PRIVATE companion on each dispatch.
-Run the source doctor after restoring that file. Source apply validates local resources only;
+The source reads runtime.env from the selected PRIVATE companion on each dispatch.
+Run the source doctor after restoring the companion and the credential vault. Source apply validates local resources only;
 it does not execute this companion directory or modify host-wide settings.
 """
 
 RUNBOOKS = {
-    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential store, then regenerate secrets/*.env from the store. Select the root with PROMOTION_ASSISTANT_CONFIG, then run the source scripts/verify_config.py. secrets/runtime.env must be a registered output of the credential store (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
-    'live-authorize.md': '# Live authorization\n\nStore the channel credentials in the external credential store, regenerate secrets/runtime.env from it (never write values into it by hand) and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
+    'new-machine.md': '# New machine\n\nRestore the PRIVATE companion and the external credential vault. Select the root with PROMOTION_ASSISTANT_CONFIG, then run the source scripts/verify_config.py. runtime.env binds credentials as cv:// references (keys in CONFIG.md). READY is local configuration/resource proof only.\n',
+    'live-authorize.md': '# Live authorization\n\nStore the channel credentials in the external credential vault, bind them in runtime.env as cv:// references (never values) and verify the selected root with source doctor. Product send_mode=live and separate process-local PROMO_LIVE_AUTHORIZED_<CHANNEL> remain required.\n',
     'ban-recovery.md': '# Recovery\n\nPause dispatch and reconcile state, scheduling receipts and unresolved provider outcomes before retrying. Preserve all protected lock and receipt files until their dependencies close.\n',
 }
 
@@ -134,10 +134,10 @@ def main():
     print("  Initialize this directory as a separate PRIVATE Git companion outside the source repository.")
     print("  1) Fill product.json (name, aff_base, compliance.*) and add channels to registry.json.")
     print("  2) Per channel: channels/<slug>/policy.json (caps/gap/warmup/backoff) +")
-    print("     secrets/<slug>.env.template (key names only). The real secrets/<slug>.env is generated")
-    print("     from your external credential store and stays gitignored; never write values into it by hand.")
-    print("  3) Register secrets/runtime.env as an output of your credential store and generate it (keys in the")
-    print("     source CONFIG.md), then run source doctor.")
+    print("     secrets/<slug>.env.template (key names only). Credential values stay in your external")
+    print("     credential vault; never write them into this repository.")
+    print("  3) Write runtime.env with the channel keys (source CONFIG.md) as cv://<record>/<credential>")
+    print("     references, then run source doctor.")
     print("  4) export %s=%s   (or use the default path)" % (PRIMARY_ENV, out))
     print("  5) python scripts/verify_config.py   # doctor: confirms the config is ready")
     return 0

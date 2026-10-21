@@ -57,7 +57,7 @@ only pacing is courtesy, never classifier evasion. `reference/participation.md` 
 ## CLI
 
 Before dispatch, run doctor against the selected root. Provider resources bind to its
-`secrets/runtime.env`; READY covers local configuration and resources, not live delivery.
+`runtime.env` (cv:// references resolved at dispatch); READY covers local configuration and resources, not live delivery.
 Run the following commands from `skills/promotion-assistant`.
 
 ```
@@ -92,8 +92,8 @@ The source thread and final `give` or `ask` type are required for every particip
    level-skipping), lognormal jitter, per-account variants + content-hash dedup. Random delay alone
    is NOT safety.
 4. **Private storage.** Real copy, audiences, consent and runtime DATA are versioned in the
-   PRIVATE companion. `secrets/*.env` credentials are gitignored projections generated
-   from an external credential store and are never versioned anywhere; see
+   PRIVATE companion. Credential values stay in the external credential vault and are never
+   versioned anywhere; the companion's `runtime.env` names them by `cv://` reference; see
    [CONFIG.md](../../CONFIG.md#private-credentials-e6). No real values belong in this public skill tree.
 5. **Don't reimplement the base.** Scheduling → `schedule-reminder` CLI only (never its .db/SQL);
    alerts → the configured Discord relay; email → the configured `reviewed-email-v1` helper.

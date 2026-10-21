@@ -199,19 +199,32 @@
       }
     },
     {
+      "artifact_id": "runtime_bindings",
+      "path_pattern": "runtime.env",
+      "purpose": "Provider resource bindings: cv:// references into the external credential vault plus literal non-secret values.",
+      "schema": "CONFIG.md: Private credentials (E6), allowed keys and KEY=VALUE syntax.",
+      "producer": "Reviewed operator configuration; never a credential value.",
+      "consumer_or_final_deliverable": "scripts/config.py Config.runtime_env, read by the selected channel adapter at dispatch.",
+      "rebuild_or_restore": "Restore the reviewed private version; the referenced values come back with the credential vault.",
+      "retention_rule": {
+        "class": "core",
+        "rule": "Keep while any channel binds a resource."
+      }
+    },
+    {
       "artifact_id": "credentials",
       "path_pattern": "secrets/*.env",
-      "purpose": "Currently provisioned channel credentials, as plaintext projections of an external credential store.",
-      "schema": "CONFIG.md; selected provider or email-helper contract.",
-      "producer": "Generation from an external credential store into a gitignored file; never hand-written.",
-      "consumer_or_final_deliverable": "The selected channel adapter reads secrets/runtime.env only.",
-      "rebuild_or_restore": "Restore the external credential store and regenerate the projection, or reauthorize with the provider.",
+      "purpose": "Optional local credential file for the participation reader (secrets/reddit.env); no other adapter reads secrets/.",
+      "schema": "CONFIG.md: Private credentials (E6).",
+      "producer": "Provider reauthorization into a gitignored file; never versioned.",
+      "consumer_or_final_deliverable": "The optional participation reader reads secrets/reddit.env only.",
+      "rebuild_or_restore": "Reauthorize with the provider.",
       "retention_rule": {
         "class": "rebuildable",
-        "rule": "Regenerate from the credential store whenever a value changes; remove a projection once no active channel needs it."
+        "rule": "Keep while the participation reader is configured; remove once it no longer needs the file."
       },
       "persistence": "transient",
-      "transient_reason": "Credential values are versioned only in the external credential store; the companion holds a gitignored generated copy and never commits it."
+      "transient_reason": "A local provider credential; it is never committed, and reauthorization replaces it."
     },
     {
       "artifact_id": "generated_reference_0",
@@ -341,45 +354,6 @@
       "retention_rule": {
         "class": "rebuildable",
         "rule": "Normal completion removes staging files. After interruption, remove only after the writer stops and the final state, required inputs and commit outcome are known."
-      }
-    },
-    {
-      "artifact_id": "companion_apply_bridge",
-      "path_pattern": "scripts/apply.py",
-      "purpose": "Selected companion-specific credential and configuration application bridge.",
-      "schema": "skills/promotion-assistant/scripts/cli.py: cmd_apply; companion provisioning runbooks.",
-      "producer": "Companion maintainer.",
-      "consumer_or_final_deliverable": "Legacy companion helper; current source apply validates secrets/runtime.env and does not execute this file.",
-      "rebuild_or_restore": "Restore the reviewed companion version and validate any replacement against the selected apply interface.",
-      "retention_rule": {
-        "class": "retired",
-        "rule": "Retire only after external provisioning and restoration references have migrated to selected-root runtime.env and current source doctor."
-      }
-    },
-    {
-      "artifact_id": "companion_credential_capture",
-      "path_pattern": "scripts/capture-key.ps1",
-      "purpose": "Retired companion credential writer; it now refuses and points to the external credential store.",
-      "schema": "Companion provisioning runbooks and secrets/README.md; the helper no longer writes credential files; secrets/*.env are generated from the external credential store.",
-      "producer": "Companion maintainer.",
-      "consumer_or_final_deliverable": "None; credential values are stored in the external credential store and secrets/*.env are regenerated from it.",
-      "rebuild_or_restore": "Do not restore a version that writes secrets/*.env; restore the credential store and regenerate the projections, or reauthorize with the provider.",
-      "retention_rule": {
-        "class": "retired",
-        "rule": "Keep only as a refusal stub; remove once no companion runbook names it."
-      }
-    },
-    {
-      "artifact_id": "obsolete_mcp_verifier",
-      "path_pattern": "scripts/verify.sh",
-      "purpose": "Legacy MCP listing and registry.tools verifier superseded by current validation interfaces.",
-      "schema": "Legacy helper expects registry.tools and a separate functional-test.py; current channel configuration uses registry.channels.",
-      "producer": "Historical companion scaffolding.",
-      "consumer_or_final_deliverable": "No current selected workflow; current restoration uses the source doctor and companion apply.py --verify.",
-      "rebuild_or_restore": "Use the current source doctor and selected companion application checks; retain any required diagnostic evidence separately.",
-      "retention_rule": {
-        "class": "retired",
-        "rule": "Eligible only for a separately reviewed exact-file retirement after inactivity and recovery checks. Classification does not authorize automatic deletion or execute the helper."
       }
     },
     {

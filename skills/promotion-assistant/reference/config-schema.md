@@ -2,7 +2,7 @@
 
 The skill is product-agnostic. All copy, audiences, channel policy and secrets live in a **separate
 private config repo**, located via `PROMOTION_ASSISTANT_CONFIG` (or the proven sibling `promotion-assistant-config`). Generate the structure with the source initializer. Provider binding is selected-root
-`secrets/runtime.env`; [CONFIG.md](../../../CONFIG.md) lists supported keys and recovery rules.
+`runtime.env`; [CONFIG.md](../../../CONFIG.md) lists supported keys and recovery rules.
 
 ```
 <product>-promo-config/
@@ -14,8 +14,8 @@ private config repo**, located via `PROMOTION_ASSISTANT_CONFIG` (or the proven s
   compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
   metrics/                # versioned PRIVATE events, previews, suppression and runtime state
   metrics/runs/<id>.json   # versioned PRIVATE frozen intent and per-item receipts
-  secrets/                # gitignored *.env projections of an external credential store; README only is versioned
-  secrets/runtime.env    # provider resource mapping, never loaded as shell code
+  runtime.env             # provider resource mapping (cv:// references + literal non-secret values), never loaded as shell code
+  secrets/                # gitignored; README and templates only are versioned
   runbooks/               # new-machine.md, live-authorize.md, ban-recovery.md
 ```
 

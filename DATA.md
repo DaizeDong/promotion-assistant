@@ -22,17 +22,15 @@ reservations and cooldowns. Do not reset these to reduce disk use. Dry-run logs 
 rebuildable after their specific review or diagnosis ends; retain any exact payload
 that is selected evidence or still referenced.
 
-Current credential files are gitignored projections of an external credential store, never
-versioned; their recovery route is that store or reauthorization. Initializer templates and copied runbooks are
+Credential values live only in the external credential vault; the companion's versioned
+`runtime.env` names them by `cv://` reference. Their recovery route is that vault or
+reauthorization. Initializer templates and copied runbooks are
 rebuildable setup references. The source owns the current operating instructions;
-a companion needs a current README linking here. Current source loads `secrets/runtime.env`
-from the selected root; source apply validates it without running companion code. The legacy
-`scripts/apply.py` may retire only after external provisioning and recovery references migrate.
-Credential capture helpers remain until their actual recovery dependencies end.
-
-The exact `scripts/verify.sh` is a retired MCP registry verifier. Current
-restoration uses the source doctor against the selected root and its restored runtime.env. Its retired
-classification does not authorize deletion. The exact legacy
+a companion needs a current README linking here. Current source loads `runtime.env`
+from the selected root; source apply validates it without running companion code. The companion
+carries no helper scripts: the historical `scripts/apply.py`, `scripts/capture-key.ps1` and
+`scripts/verify.sh` were deleted once credentials moved to the vault. Restoration uses the source
+doctor against the selected root, its `runtime.env` and the restored credential vault. The exact legacy
 `compliance/policy.json` and `compliance/consent-ledger.template.jsonl` are
 protected review inputs until their unique decisions, evidence and obligations
 are reconciled. Current dispatch reads product and channel policies and the

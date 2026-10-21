@@ -81,8 +81,8 @@ python skills/promotion-assistant/scripts/verify_config.py --config-dir <private
 
 骨架还需要填写 product/registry 的 `schema_version: 1`、产品名称和渠道 slug/platform，并完成
 独立伴生仓及选定提供方的资源配置。初始化结束不代表就绪。初始化器生成的凭据排除
-规则保留即可：`secrets/*.env` 由外部凭据库生成，任何仓都不纳入版本管理（见 [CONFIG.md](CONFIG.md#private-credentials-e6)）。
-提供方映射从所选目录的 `secrets/runtime.env` 读取，格式为 `KEY=VALUE`。
+规则保留即可：凭据值只在外部凭据库里，任何仓都不纳入版本管理（见 [CONFIG.md](CONFIG.md#private-credentials-e6)）。
+提供方映射从所选伴生仓的 `runtime.env` 读取，格式为 `KEY=VALUE`，凭据写成 `cv://<记录>/<凭据>` 引用，派发时才解析。
 
 切换前清除优先级更高的旧变量，再运行 doctor。`init` 检查已有配置，全局 `--config` 必须放在
 子命令前；`apply` 执行本地 doctor，不运行历史伴生仓 helper，也不修改 `~/.claude.json`。

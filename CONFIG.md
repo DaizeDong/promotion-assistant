@@ -34,7 +34,7 @@ Local absolute helper/interpreter paths are resources and need not be inside the
   compliance/consent-ledger.jsonl   # versioned PRIVATE lawful-basis records
   metrics/                      # versioned PRIVATE events, previews, bandit/throttle state and suppression
   metrics/runs/<run-id>.json     # versioned PRIVATE frozen intent and per-item receipts
-  secrets/runtime.env           # selected-root runtime resource mapping; private only
+  runtime.env                   # provider resource mapping: cv:// references + literal non-secret values
   runbooks/                     # new-machine.md, live-authorize.md, ban-recovery.md
 ```
 
@@ -73,32 +73,31 @@ python scripts/init_config.py --out <companion dir>   # your PRIVATE companion c
 export PROMOTION_ASSISTANT_CONFIG=<companion dir>
 
 # 3. Use a separate PRIVATE Git companion outside this repository.
-# 4. Fill product.json + registry.json + channels/<slug>/policy.json, then generate secrets/runtime.env
-#    from your credential store (never write values into it by hand);
+# 4. Fill product.json + registry.json + channels/<slug>/policy.json, then write runtime.env
+#    with cv://<record>/<credential> references into your credential vault (never a value);
 #    commit the PRIVATE companion and confirm local readiness:
 python scripts/verify_config.py           # doctor: PASS/FAIL per check, names what is missing
 ```
 
 `init_config.py` is template-driven and deterministic. Re-running with the same `--out`
 preserves existing files unless `--force` is supplied; matching empty inputs produce the same
-skeleton (E4). It does not generate or require a companion `apply.py`.
+skeleton (E4). It does not generate or require any companion script.
 
-The initializer writes Mode B exclusions (`secrets/*` and `*.env`); keep them. Credential files
-under `secrets/` are generated projections of an external credential store and are never
-versioned, in this public repository or in the PRIVATE companion
-([storage.contract.json](storage.contract.json) declares them transient). Do not re-include
-`secrets/*.env` in any ignore file. Register each credential file as an output of your credential
-store before creating it, then generate it from the store; never write values into the file by
-hand, because an ignored file that exists only on one disk has no backup. Initialization alone does
-not produce conforming runtime storage.
+The initializer writes Mode B exclusions (`secrets/*` and `*.env`, with `runtime.env` re-included);
+keep them. Credential values are never versioned, in this public repository or in the PRIVATE
+companion: `runtime.env` names each one as a `cv://<record>/<credential>` reference into the
+credvault vault, which the source resolves when a dispatch reads it, so the file holds references
+and is versioned in the companion like any other configuration. Never write a credential value into
+it or into any other companion file. Initialization alone does not produce conforming runtime
+storage.
 
-The source reads `secrets/runtime.env` for each selected configuration; source `apply` performs
+The source reads `runtime.env` for each selected configuration; source `apply` performs
 doctor validation without global mutation. `cli.py init` checks an existing configuration, and
 the global `--config` option must precede the subcommand.
 
 ## Switching between configs (hot-swap), E5
 
-A selected root owns product data and `secrets/runtime.env`. Select the new root and rerun doctor. Credential binding changes with that root. Live authorization
+A selected root owns product data and `runtime.env`. Select the new root and rerun doctor. Credential binding changes with that root. Live authorization
 remains process-local and must be reviewed for the selected product:
 
 ```bash
@@ -164,13 +163,13 @@ with task IDs; unavailable or failed registration makes `plan` exit nonzero.
 ## Private credentials (E6)
 
 The companion config repo is **separate and private**, but credential values do not live in its
-history. Direct-child `secrets/*.env` files are gitignored projections generated from an external
-credential store; the store is their only source of truth and their recovery route. Change a value
-in the store and regenerate the projection; restore by restoring the store and regenerating, or by
-reauthorizing with the provider. Dispatch adapters read only `secrets/runtime.env` (the optional
-participation reader also reads `secrets/reddit.env`; no other `secrets/*.env` file is read), so
-`runtime.env` must itself be a registered output of the credential store before it is created. No
-MCP template or companion apply script is required. Its allowed keys are
+history. The credvault vault is their only source of truth and their recovery route: change a value
+in the vault, restore by restoring the vault, or reauthorize with the provider. Dispatch adapters
+read only the companion's `runtime.env` (the optional participation reader also reads
+`secrets/reddit.env`; no other `secrets/*.env` file is read). A value of the form
+`cv://<record>/<credential>` is resolved through the credvault Python package when `runtime.env`
+is read; any other value is literal and must not be a credential. No MCP template or companion
+apply script is required. Its allowed keys are
 `PROMO_SEND_GMAIL`, `PROMO_DISCORD_BOT_TOKEN`, `PROMO_DISCORD_ANNOUNCE_CHANNEL_ID`,
 `PROMO_DISCORD_ALLOW_EMBED`, `PROMO_MASTODON_INSTANCE`, `PROMO_MASTODON_TOKEN`,
 `PROMO_BLUESKY_HANDLE` and `PROMO_BLUESKY_APP_PASSWORD`. Use UTF-8 `KEY=VALUE` lines;

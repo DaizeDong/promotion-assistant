@@ -8,7 +8,7 @@ Each provider, in LIVE mode, processes its own OAuth + reacts to runtime rate-li
 BUILD-TIME REALITY: every live transport here is gated behind dispatch.py's fail-closed exit,
 so calling a provider during build/test produces a SIMULATED result (no network egress). The
 provider classes carry a `LIVE_TRANSPORT` flag: True = a real integration path exists (email via
-the local send-gmail.ps1 link; Discord via the relay/own-server bot), False = deferred-gap (the
+the helper named by PROMO_SEND_GMAIL; Discord via the relay/own-server bot), False = deferred-gap (the
 demand-side primitive is registered but no compliant automated transport ships yet — e.g. Reddit
 OAuth posting and X API). A deferred-gap is an EXPLICIT gap, never a silent skip.
 """
@@ -49,9 +49,8 @@ def _environment():
 
 
 # Local infra contracts (reused, not reimplemented). Paths are env-configurable for portability;
-# defaults are generic per-tool locations, never hardcoded personal install paths.
-SEND_GMAIL_PS1 = Path(os.path.expanduser(
-    os.environ.get("PROMO_SEND_GMAIL", "~/.local/send-gmail.ps1")))
+# defaults are generic per-tool locations, never hardcoded personal install paths. The email helper
+# has no default: it is whatever PROMO_SEND_GMAIL names in the selected runtime.env.
 DISCORD_RELAY = Path(os.path.expanduser(
     os.environ.get("PROMO_NOTIFIER_PY", "~/.local/notifier.py")))
 
@@ -214,10 +213,9 @@ class EmailProvider(Provider):
     def publish(self, payload, *, live=False):
         if not live:
             return self._not_live("publish")
-        selected = _SELECTED_ENV.get()
-        helper = (Path(selected.get('PROMO_SEND_GMAIL', '')).expanduser()
-                  if selected is not None else SEND_GMAIL_PS1)
-        if not helper.is_file():
+        configured = _environment().get('PROMO_SEND_GMAIL', '')
+        helper = Path(configured).expanduser()
+        if not configured or not helper.is_file():
             return _not_applied(payload, self.platform, 'email helper not found; initialize reviewed-email-v1 support')
         if not _arg_binding_safe(payload.get('recipient'), payload.get('subject'), payload.get('body')):
             return _not_applied(payload, self.platform, 'argument starts with a dash; conservative binding guard')

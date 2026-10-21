@@ -5,6 +5,7 @@ All notable changes to this project are documented here (Keep a Changelog style)
 ## [Unreleased]
 
 ### Removed
+- The email provider's built-in helper default under the home directory: the helper is only what `PROMO_SEND_GMAIL` names in the selected `runtime.env`, and an unset one is a setup failure.
 - The `guards` and `style` submodules and the pii-guard, dash-guard, doc-contract, load-budget and fleet-sync workflows. The `.githooks/` shims run the privacy checks and the dash check (on added lines) from the local fleet-guards and fleet-style checkouts named by `git config fleet.guards` and `fleet.style`, and block while either is unset. `config.py` resolves the companion through the installed `fleet_guards.runtime.companion_resolver`, and a clone no longer needs `--recurse-submodules`.
 - The test suite (`tests/`, `selftest.py`, fixtures and `tools/make_fixtures.py`); features are confirmed working and keep no tests.
 - Runtime PRIVATE proof: `private_storage` no longer calls the Guards `prove_private_companion`,

@@ -25,7 +25,7 @@ import json
 import os
 from pathlib import Path
 
-from . import compliance, events, providers, email_contract, private_storage
+from . import compliance, events, providers, email_contract, machine_role, private_storage
 from .config import ConfigError
 
 
@@ -126,6 +126,8 @@ def dispatch(decision: dict, *, cfg, throttle, env=None) -> dict:
                                              expected=cfg.live_authorize_token(channel))
     if channel_config.get('enabled') is False or cfg.product.get('enabled') is False:
         live, authorization_reason = False, 'selected channel or product is disabled'
+    if live:
+        machine_role.refuse_on_secondary()  # live sends happen on the primary machine only
 
     def result(status, **extra):
         if not live:

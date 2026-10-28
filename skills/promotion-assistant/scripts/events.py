@@ -2,7 +2,8 @@
 """L4 event schema + append-only event store (event sourcing).
 
 Every outbound action and every receipt becomes one JSONL line. The raw log is the
-source of truth; funnel counts, attribution and reward are *views* computed from it
+source of truth; each machine appends only to its own lane ``events.jsonl.d/<machine-id>.jsonl``
+and readers merge every lane, so two machines never edit the same file; funnel counts, attribution and reward are *views* computed from it
 (metrics.py), so weights stay hot-swappable and reward is re-computable.
 
 HARD: propensity_p + policy_version MUST be present on any event produced by a bandit
@@ -15,7 +16,7 @@ import json
 import time
 import uuid
 from pathlib import Path
-from . import private_storage
+from . import machine_role, private_storage
 
 EVENT_TYPES = {
     # positive funnel
@@ -101,12 +102,27 @@ def _rows(payload):
     return rows
 
 
+def _lane_dir(path) -> Path:
+    """The store at ``metrics/events.jsonl`` lives as one lane per machine under ``events.jsonl.d/``."""
+    return Path(str(path)+'.d')
+
+
+def _lane(path) -> Path:
+    """This machine's lane; an unset CLAUDE_MACHINE_ID raises instead of picking a default."""
+    return _lane_dir(path)/(machine_role.machine_id()+'.jsonl')
+
+
+def _lanes(path):
+    directory = _lane_dir(path)
+    return sorted(directory.glob('*.jsonl')) if directory.is_dir() else []
+
+
 def append(path: Path, ev: dict) -> None:
     append_once(path, ev)
 
 
 def append_once(path: Path, ev: dict, *, key=None):
-    """Atomically append, or return a matching prior manual-record identity."""
+    """Atomically append to this machine's lane, or return a matching prior identity from any lane."""
     errs = validate_event(ev)
     if errs:
         raise ValueError("event schema violation: %s" % "; ".join(errs))
@@ -116,8 +132,12 @@ def append_once(path: Path, ev: dict, *, key=None):
     if key is not None:
         event['record_key'] = key
 
+    lane = _lane(path)
+    others = [row for other in _lanes(path) if other.name != lane.name
+              for row in _rows(private_storage.read_text(other))] if key is not None else []
+
     def merge(previous):
-        rows = _rows(previous)
+        rows = others+_rows(previous)
         if key is not None:
             matches = [row for row in rows if row.get('record_key') == key]
             if len(matches) > 1:
@@ -134,8 +154,10 @@ def append_once(path: Path, ev: dict, *, key=None):
             prefix += '\n'
         return prefix+json.dumps(event, ensure_ascii=False)+'\n', event
 
-    return private_storage.update_text(path, merge)
+    return private_storage.update_text(lane, merge)
 
 
 def read(path: Path):
-    return _rows(private_storage.read_text(path))
+    """All machines' lanes merged in timestamp order (each lane keeps its own append order)."""
+    rows = [row for lane in _lanes(path) for row in _rows(private_storage.read_text(lane))]
+    return sorted(rows, key=lambda row: row.get('ts') or 0)

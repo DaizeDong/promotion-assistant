@@ -351,7 +351,7 @@ def cmd_authorize(args):
     print("  1) set product.json send_mode = \"live\"")
     print("  2) export PROMO_LIVE_AUTHORIZED_%s=<any-non-empty-token>" % ch)
     print("  3) bind the channel keys in the selected companion's runtime.env as cv:// references (never values); run doctor")
-    print("Until BOTH are present, dispatch() simulates and writes metrics/dry-run.jsonl (zero egress).")
+    print("Until BOTH are present, dispatch() simulates and writes metrics/dry-run.jsonl.d/<machine-id>.jsonl (zero egress).")
     return 0
 
 

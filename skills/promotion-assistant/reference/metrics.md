@@ -1,6 +1,6 @@
 # L4, Metrics: funnel, attribution, reward (event sourcing)
 
-`scripts/events.py` is the append-only source of truth (`metrics/events.jsonl`); `scripts/metrics.py`
+`scripts/events.py` is the append-only source of truth (`metrics/events.jsonl.d/<machine-id>.jsonl`, one lane per machine, merged on read); `scripts/metrics.py`
 computes everything else as a re-computable VIEW, so weights stay hot-swappable.
 
 ## Six-layer funnel (blast + precision unified)

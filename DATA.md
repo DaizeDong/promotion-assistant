@@ -16,8 +16,10 @@ withdrawals and exclusions while contact activity or compliance obligations rema
 runs and records referenced by delayed observations, idempotency checks or required
 delivery evidence. A completed status alone does not prove those dependencies ended.
 
-`metrics/events.jsonl`, `bandit-state.json` and `throttle-state.json` form the
-current observation, learning and admission state. Preserve credited event identities,
+`metrics/events.jsonl.d/`, `bandit-state.json` and `throttle-state.json` form the
+current observation, learning and admission state. Each machine appends events only to
+its own lane `events.jsonl.d/<machine-id>.jsonl` (the id comes from `CLAUDE_MACHINE_ID`)
+and readers merge every lane; dry-run previews use `dry-run.jsonl.d/` the same way. Preserve credited event identities,
 reservations and cooldowns. Do not reset these to reduce disk use. Dry-run logs are
 rebuildable after their specific review or diagnosis ends; retain any exact payload
 that is selected evidence or still referenced.

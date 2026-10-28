@@ -122,8 +122,8 @@
     },
     {
       "artifact_id": "events",
-      "path_pattern": "metrics/events.jsonl",
-      "purpose": "Delivery outcomes and observations used by attribution and learning.",
+      "path_pattern": "metrics/events.jsonl.d/*.jsonl",
+      "purpose": "Delivery outcomes and observations used by attribution and learning; one append-only lane per machine named by CLAUDE_MACHINE_ID, merged on read.",
       "schema": "skills/promotion-assistant/scripts/events.py: validate_event and read; skills/promotion-assistant/scripts/learning.py.",
       "producer": "Dispatch and authorized observation ingestion.",
       "consumer_or_final_deliverable": "Metrics views, bandit learning and retained run reconciliation.",
@@ -135,8 +135,8 @@
     },
     {
       "artifact_id": "previews",
-      "path_pattern": "metrics/dry-run.jsonl",
-      "purpose": "Would-send payloads and eligibility from previews.",
+      "path_pattern": "metrics/dry-run.jsonl.d/*.jsonl",
+      "purpose": "Would-send payloads and eligibility from previews; one lane per machine named by CLAUDE_MACHINE_ID.",
       "schema": "skills/promotion-assistant/scripts/dispatch.py; CONFIG.md dry-log contract.",
       "producer": "skills/promotion-assistant/scripts/dispatch.py.",
       "consumer_or_final_deliverable": "The active campaign review or a specifically selected diagnostic.",

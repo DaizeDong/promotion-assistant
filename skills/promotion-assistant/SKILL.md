@@ -85,7 +85,7 @@ The source thread and final `give` or `ask` type are required for every particip
 1. **dry-run is the default.** Every real send/post/DM goes through the single `dispatch()` exit,
    which fail-closed asserts `product.json.send_mode=="live"` **and** env
    `PROMO_LIVE_AUTHORIZED_<CHANNEL>`. Missing either → it simulates (full pipeline, `simulated`
-   event + `dry-run.jsonl`, zero egress). Build/test never sends to real audiences.
+   event + a `dry-run.jsonl.d/` lane record, zero egress). Build/test never sends to real audiences.
 2. **Compliance fail-closed.** No physical address / no unsubscribe / suppressed recipient / EU
    recipient without a lawful basis → the send is rejected, not warned. CAN-SPAM + GDPR are gates.
 3. **Throttle + humanize.** token-bucket + AIMD (429 → halve + cooldown), warmup state machine (no

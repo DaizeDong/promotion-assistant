@@ -21,7 +21,7 @@ Verified by E4 (0 over-limit, 429 halves cap + cooldown).
 ## The dry-run exit (`scripts/dispatch.py`, the ONE outbound function)
 fail-closed: real egress requires `product.json.send_mode=="live"` **AND** env
 `PROMO_LIVE_AUTHORIZED_<CHANNEL>`. Missing either → SIMULATE: run the full pipeline (compliance →
-throttle), write an `event_type=simulated` row + a `metrics/dry-run.jsonl` record (would-send content +
+throttle), write an `event_type=simulated` row + a `metrics/dry-run.jsonl.d/<machine-id>.jsonl` record (would-send content +
 estimated recipients), and perform ZERO network egress. So the metrics stream + bandit train with no
 real outreach. Verified by E7. **Going live is per-channel and deliberate**, see the config repo's
 `runbooks/live-authorize.md`; the build/test phase is always dry-run.

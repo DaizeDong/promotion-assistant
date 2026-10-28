@@ -246,7 +246,7 @@ class Config:
     # Runtime DATA is versioned in the PRIVATE companion.
     def metrics_dir(self) -> Path:
         d = self.data_path('metrics')
-        for name in ('events.jsonl', 'dry-run.jsonl', 'bandit-state.json', 'throttle-state.json', 'suppression.csv', 'runs'):
+        for name in ('events.jsonl.d', 'dry-run.jsonl.d', 'bandit-state.json', 'throttle-state.json', 'suppression.csv', 'runs'):
             self.data_path('metrics', name)
         d.mkdir(parents=True, exist_ok=True)
         return d
